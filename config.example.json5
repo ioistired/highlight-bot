@@ -1,5 +1,8 @@
 {
 	prefix: null,  // if set to null, the prefix will be @mention only
+	sharded: false,
+
+	startup_extensions: [],
 
 	ignore_bots: {
 		default: true,
