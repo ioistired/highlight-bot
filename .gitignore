@@ -3,3 +3,5 @@ venv/
 *.py[cod]
 *.swp
 __pycache__
+*.json5
+!*.example.json5

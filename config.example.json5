@@ -1,0 +1,23 @@
+{
+	prefix: null,  // if set to null, the prefix will be @mention only
+
+	ignore_bots: {
+		default: true,
+
+		overrides: {
+			guilds: [],
+			channels: []}},
+
+	database: {
+		user: null,
+		password: null,
+		database: null,
+		host: null,
+		port: null},
+
+	tokens: {
+		discord: null,
+		stats: {
+			"bots.discord.pw": null,
+			"discordbots.org": null,
+			"botsfordiscord.com": null}}}
