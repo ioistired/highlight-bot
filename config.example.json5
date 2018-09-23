@@ -8,7 +8,7 @@
 			guilds: [],
 			channels: []}},
 
-	database: {
+	database: { // if left null, env vars will be used instead
 		user: null,
 		password: null,
 		database: null,
