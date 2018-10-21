@@ -2,4 +2,4 @@ asyncpg
 ben_cogs
 git+https://github.com/Rapptz/discord.py@rewrite#egg=discord.py
 jishaku
-pyjson5
+json5

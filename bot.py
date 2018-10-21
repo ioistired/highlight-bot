@@ -11,7 +11,7 @@ import uuid
 import asyncpg
 import discord
 from discord.ext import commands
-import pyjson5
+import json5
 
 BASE_DIR = os.path.dirname(__file__)
 
@@ -54,11 +54,12 @@ class HighlightBot(commands.AutoShardedBot):
 				frozenset(self.config['ignore_bots']['overrides'][key]))
 
 	async def on_ready(self):
-		await self.change_presence(activity=self.game())
+		await self.change_presence(activity=self.game)
 
 		logger.info('Logged in as: %s', self.user)
 		logger.info('ID: %s', self.user.id)
 
+	@property
 	def game(self):
 		return discord.Game(name=self._formatted_prefix() + 'help')
 
@@ -147,7 +148,7 @@ class HighlightBot(commands.AutoShardedBot):
 
 if __name__ == '__main__':
 	with open(os.path.join(BASE_DIR, 'config.json5')) as f:
-		config = pyjson5.decode_io(f)
+		config = json5.load(f)
 
 	cls = AutoShardedHighlightBot if config['sharded'] else HighlightBot
 	bot = cls(config=config)
