@@ -11,7 +11,7 @@
 			guilds: [],
 			channels: []}},
 
-	database: { // if left null, env vars will be used instead
+	database: { // if left null, env vars or defaults will be used instead
 		user: null,
 		password: null,
 		database: null,
@@ -21,6 +21,6 @@
 	tokens: {
 		discord: null,
 		stats: {
-			"bots.discord.pw": null,
-			"discordbots.org": null,
-			"botsfordiscord.com": null}}}
+			'bots.discord.pw': null,
+			'discordbots.org': null,
+			'botsfordiscord.com': null}}}
