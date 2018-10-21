@@ -3,6 +3,7 @@
 	sharded: false,
 
 	startup_extensions: [
+		'cogs.db',
 		'ben_cogs.misc',
 		'ben_cogs.debug',
 		'ben_cogs.stats',
