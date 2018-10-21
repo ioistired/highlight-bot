@@ -18,7 +18,7 @@ BASE_DIR = os.path.dirname(__file__)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-class HighlightBot(commands.AutoShardedBot):
+class HighlightBotBase(commands.bot.BotBase):
 	def __init__(self, *, config):
 		self.config = config
 		self._process_config()
@@ -145,6 +145,12 @@ class HighlightBot(commands.AutoShardedBot):
 		with contextlib.suppress(AttributeError):
 			await self.pool.close()
 		await super.logout()
+
+class HighlightBot(HighlightBotBase, discord.Client):
+	pass
+
+class AutoShardedHighlightBot(HighlightBotBase, discord.AutoShardedClient):
+	pass
 
 if __name__ == '__main__':
 	with open(os.path.join(BASE_DIR, 'config.json5')) as f:
