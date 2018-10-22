@@ -54,19 +54,40 @@ class Highlight:
 					seen_users.add(user)
 
 	async def notify(self, user, highlight, message):
-		message = self.get_message(user, highlight, message)
+		message = await self.notification_message(user, highlight, message)
 
 		with contextlib.suppress(discord.HTTPException):
 			await user.send(**message)
 
-	def get_message(self, user, highlight, message):
-		content = f'In {message.channel.mention} for server {message.guild.name}, you were mentioned with highlight word **{highlight}**'
-		embed = discord.Embed(title=highlight, description=self.get_embed_description(message))
+	async def notification_message(self, user, highlight, message):
+		content = (
+			f'In {message.channel.mention} for server {message.guild.name}, '
+			f'you were mentioned with highlight word **{highlight}**')
+
+		embed = discord.Embed()
+		embed.title = highlight
+		embed.description = await self.embed_description(message)
+		embed.set_author(name=message.author.name, icon_url=message.author.avatar_url_as(format='png', size=64))
+		embed.set_footer(text='Triggered')  # "Triggered today at 21:21"
+		embed.timestamp = message.created_at
+
 		return dict(content=content, embed=embed)
 
-	def get_embed_description(self, message):
+	@classmethod
+	async def embed_description(cls, message):
+		orig_message = message
+		formatted_messages = '\n'.join([
+			cls.format_message(message, is_highlight=message.id == orig_message.id)
+			async for message in message.channel.history(around=message, limit=8, reverse=True)])
+
+		return '\n\n'.join((formatted_messages, f'[Original message]({message.jump_url})'))
+
+	@staticmethod
+	def format_message(message, *, is_highlight: bool):
 		date = message.created_at.strftime('[%I:%M:%S %p UTC]')
-		return f'{date} {message.author}: {message.content}'
+		date = f'**{date}**' if is_highlight else date
+		formatted = f'{date} {message.author}: {message.content}'
+		return formatted
 
 def setup(bot):
 	bot.add_cog(Highlight(bot))
