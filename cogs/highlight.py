@@ -185,7 +185,7 @@ class Highlight:
 	### Events
 
 	async def on_message(self, message):
-		if not message.guild or not self.bot._should_reply_to_bot(message):
+		if not message.guild or not self.bot.should_reply(message):
 			return
 
 		async for user, highlight in self.highlights(message):
