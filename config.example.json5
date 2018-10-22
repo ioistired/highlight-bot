@@ -29,7 +29,7 @@
 		stats: {
 			'bots.discord.pw': null,
 			'discordbots.org': null,
-			'botsfordiscord.com': null}}
+			'botsfordiscord.com': null}},
 
 	// if defined and truthy, this should be a dict
 	//	structure: {
