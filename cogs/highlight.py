@@ -39,6 +39,7 @@ class Highlight:
 	def __init__(self, bot):
 		self.bot = bot
 		self.db_cog = self.bot.get_cog('Database')
+		self.recently_spoken = RecentlySpoken()
 
 	### Commands
 
@@ -184,11 +185,18 @@ class Highlight:
 	### Events
 
 	async def on_message(self, message):
-		if not message.guild or not self.bot.should_reply(message):
+		if not message.guild or not self.bot._should_reply_to_bot(message):
 			return
 
 		async for user, highlight in self.highlights(message):
-			await self.notify(user, highlight, message)
+			if (message.channel.id, user.id) not in self.recently_spoken:
+				await self.notify(user, highlight, message)
+
+		# keep track of whether the user recently spoke in this channel
+		# this is to prevent highlighting someone while they're probably still looking at the channel
+		self.recently_spoken.add(message)
+		await asyncio.sleep(10)
+		self.recently_spoken.discard(message)
 
 	async def highlights(self, message):
 		highlight_users = await self.db_cog.channel_highlights(message.channel)
@@ -264,6 +272,45 @@ class Highlight:
 		date = f'**{date}**' if is_highlight else date
 		formatted = f'{date} {message.author}: {message.content}'
 		return formatted
+
+
+class RecentlySpoken(set):
+	"""a set that keeps track of recently spoken members, per channel
+	this is a convenience class that allows you to do
+	myset.add(message)
+	in order to say “the author of this message recently spoke in this message's channel”
+	testing for containment, set.add, set.remove, and set.discard work the same way.
+	"""
+
+	def __init__(self, xs=None):
+		if xs is None:
+			super().__init__()
+		else:
+			super().__init__(map(self._convert, xs))
+
+	def _convert(self, message: discord.Message):
+		return message.channel.id, message.author.id
+
+	def _converted_method(name):
+		def meth(self, message: discord.Message):
+			orig = getattr(super(), name)
+			return orig(self._convert(message))
+		meth.__name__ = name
+		return meth
+
+	add = _converted_method('add')
+	remove = _converted_method('remove')
+	discard = _converted_method('discard')
+
+	del _converted_method
+
+	def __contains__(self, other):
+		if isinstance(other, discord.Message):
+			return self._convert(other) in self
+		return super().__contains__(other)
+
+	def __repr__(self):
+		return f'{type(self).__qualname__}({set(self)!r})'
 
 def setup(bot):
 	bot.add_cog(Highlight(bot))
