@@ -40,9 +40,6 @@ class Highlight:
 		if not highlight_users:
 			return
 
-		print(highlight_users, bool(highlight_users))
-		print(regex)
-
 		seen_users = set()
 		for match in re.finditer(regex, message.content):
 			highlight = match[0]
