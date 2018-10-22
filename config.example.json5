@@ -1,6 +1,5 @@
 {
 	prefix: null,  // if set to null, the prefix will be @mention only
-	sharded: false,
 
 	// remember: since this bot is AGPLv3-licensed
 	// if you change the code, you MUST publish your changes as well.

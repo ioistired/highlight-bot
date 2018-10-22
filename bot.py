@@ -44,7 +44,7 @@ class CustomContext(commands.Context):
 		with contextlib.suppress(discord.HTTPException):
 			await self.message.add_reaction(emoji)
 
-class HighlightBotBase(commands.bot.BotBase):
+class HighlightBot(commands.AutoShardedBot):
 	def __init__(self, *, config):
 		self.config = config
 		self._process_config()
@@ -187,16 +187,9 @@ class HighlightBotBase(commands.bot.BotBase):
 			await self.pool.close()
 		await super.logout()
 
-class HighlightBot(HighlightBotBase, discord.Client):
-	pass
-
-class AutoShardedHighlightBot(HighlightBotBase, discord.AutoShardedClient):
-	pass
-
 if __name__ == '__main__':
 	with open(os.path.join(BASE_DIR, 'config.json5')) as f:
 		config = json5.load(f)
 
-	cls = AutoShardedHighlightBot if config['sharded'] else HighlightBot
-	bot = cls(config=config)
+	bot = HighlightBot(config=config)
 	bot.run()
