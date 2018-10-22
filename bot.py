@@ -150,7 +150,7 @@ class HighlightBotBase(commands.bot.BotBase):
 			with contextlib.suppress(discord.HTTPException):
 				await context.try_add_reaction(utils.SUCCESS_EMOJIS[False])
 		elif isinstance(error, HighlightError):
-			await context.send(error, delete_after=5)
+			await context.send(error, delete_after=8)
 		elif isinstance(error, (commands.UserInputError, commands.CheckFailure)):
 			await context.send(error)
 		elif isinstance(error, commands.CommandInvokeError):
