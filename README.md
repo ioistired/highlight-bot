@@ -2,14 +2,13 @@
 
 It DMs you when certain words are said in certain channels.
 
-## Todo
+## TODO
 
-- [x] Initial prototype
+- [ ] Initial prototype
 	- [x] regex generation
 	- [x] embed message
-	- [ ] per channel/user blocklists
-	- [ ] add / remove / modify keyword via command
+	- [x] per category/channel/user blocklists
+	- [ ] add / remove keyword via command
 - [ ] Import from other server
-    - [x] via internal atabase function
+    - [x] via internal database function
     - [ ] via user-facing command
-- [ ] Block per channel category

@@ -36,22 +36,35 @@ class Highlight:
 			await self.notify(user, highlight, message)
 
 	async def highlights(self, message):
-		highlight_users, regex = await self.db_cog.get_channel_highlights(message.channel)
+		highlight_users, regex = await self.db_cog.channel_highlights(message.channel)
 		if not highlight_users:
 			return
 
 		seen_users = set()
 		for match in re.finditer(regex, message.content):
 			highlight = match[0]
-			for user_id in highlight_users.getall(highlight):
-				user = self.bot.get_user(user_id) or await self.bot.get_user_info(user_id)
+			for user in highlight_users.getall(highlight):
+				if await self.blocked(user, message):
+					continue
+
+				user = self.bot.get_user(user) or await self.bot.get_user_info(user)
 
 				if user not in seen_users and user != message.author:
 					yield user, highlight
 					seen_users.add(user)
 
-	async def notify(self, user, highlight, message):
-		message = await self.notification_message(user, highlight, message)
+	async def blocked(self, user: int, message):
+		blocks = await self.db_cog.blocks(user)
+		return any(
+			entity in blocks
+			for entity in (
+				message.channel.id,
+				message.author.id,
+				getattr(message.channel.category, 'id', None)))
+
+	@classmethod
+	async def notify(cls, user, highlight, message):
+		message = await cls.notification_message(user, highlight, message)
 
 		with contextlib.suppress(discord.HTTPException):
 			await user.send(**message)
