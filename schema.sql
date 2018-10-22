@@ -10,4 +10,11 @@ CREATE TABLE IF NOT EXISTS blocks(
 	"user" BIGINT,
 	category BIGINT,
 	channel BIGINT,
-	blocked_user BIGINT);
+	blocked_user BIGINT,
+
+	CONSTRAINT something_is_blocked CHECK (
+		category IS NOT NULL
+		OR channel IS NOT NULL
+		OR blocked_user IS NOT NULL));
+
+CREATE INDEX IF NOT EXISTS blocks_guild_user_idx ON blocks (guild, "user");
