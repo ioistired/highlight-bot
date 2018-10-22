@@ -32,6 +32,7 @@ from discord.ext import commands
 import json5
 
 import utils
+from cogs.db import HighlightError
 
 BASE_DIR = os.path.dirname(__file__)
 
@@ -148,6 +149,8 @@ class HighlightBotBase(commands.bot.BotBase):
 			logger.error('%s tried to run %s but is not the owner', context.author, context.command.name)
 			with contextlib.suppress(discord.HTTPException):
 				await context.try_add_reaction(utils.SUCCESS_EMOJIS[False])
+		elif isinstance(error, HighlightError):
+			await context.send(error, delete_after=5)
 		elif isinstance(error, (commands.UserInputError, commands.CheckFailure)):
 			await context.send(error)
 		elif isinstance(error, commands.CommandInvokeError):
