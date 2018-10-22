@@ -27,17 +27,28 @@ from multidict import CIMultiDict
 LIMIT = 10
 logger = logging.getLogger(__name__)
 
-class TooManyHighlights(commands.UserInputError):
+class HighlightError(commands.UserInputError):
 	pass
 
-class InvalidHighlightLength(commands.UserInputError):
+class TooManyHighlights(HighlightError):
+	pass
+
+class InvalidHighlightLength(HighlightError):
 	pass
 
 class Database:
 	def __init__(self, bot):
 		self.bot = bot
 
-	## Queries
+	### Events
+
+	async def on_guild_leave(self, guild):
+		await self.bot.pool.execute('DELETE FROM highlights WHERE guild = $1', guild.id)
+
+	async def on_member_leave(self, member):
+		await self.clear(member.guild.id, member.id)
+
+	### Queries
 
 	async def channel_highlights(self, channel):
 		highlight_users = CIMultiDict()
@@ -82,7 +93,7 @@ class Database:
 		s += r'\b'
 		return s
 
-	## Actions
+	### Actions
 
 	async def add(self, guild, user, highlight):
 		await self._add_highlight_check(guild, user, highlight)
