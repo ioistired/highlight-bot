@@ -3,7 +3,8 @@
 	sharded: false,
 
 	startup_extensions: [
-		'cogs.db',
+		'cogs.db', // goes first because later cogs may depend on it
+		'cogs.highlight',
 		'ben_cogs.misc',
 		'ben_cogs.debug',
 		'ben_cogs.stats',
@@ -16,7 +17,7 @@
 			guilds: [],
 			channels: []}},
 
-	database: { // if left null, env vars or defaults will be used instead
+	database: { // if any value is left null, env vars or defaults will be used instead
 		user: null,
 		password: null,
 		database: null,
