@@ -130,7 +130,7 @@ class HighlightBot(commands.AutoShardedBot):
 		def check_overrides(location, overrides_key):
 			return location and location.id in overrides[overrides_key]
 
-		if check_override(message.guild, 'guilds') or check_override(message.channel, 'channels'):
+		if check_overrides(message.guild, 'guilds') or check_overrides(message.channel, 'channels'):
 			should_reply = not should_reply
 
 		return should_reply
