@@ -4,10 +4,12 @@ It DMs you when certain words are said in certain channels.
 
 ## Todo
 
-- [ ] Initial prototype
-	- [ ] regex generation
-	- [ ] embed message
+- [x] Initial prototype
+	- [x] regex generation
+	- [x] embed message
 	- [ ] per channel/user blocklists
-	- [ ] add / remove / modify keyword
+	- [ ] add / remove / modify keyword via command
 - [ ] Import from other server
+    - [x] via internal atabase function
+    - [ ] via user-facing command
 - [ ] Block per channel category
