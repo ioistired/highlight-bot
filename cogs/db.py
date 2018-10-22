@@ -50,6 +50,7 @@ class Database:
 	### Queries
 
 	async def channel_highlights(self, channel):
+		# a multi dict allows multiple users to have the same highlight word
 		highlight_users = CIMultiDict()
 		async for user, highlight in self.cursor("""
 			SELECT "user", highlight
@@ -59,9 +60,11 @@ class Database:
 				AND NOT EXISTS (
 					SELECT 1
 					FROM blocks
-					WHERE entity = $2)
-		""", channel.guild.id, channel.id):
-			# allow multiple users to have the same highlight phrase
+					WHERE
+						highlights.user = blocks.user
+						AND entity = $2
+						OR entity = $3)
+		""", channel.guild.id, channel.id, getattr(channel.category, 'id', None):
 			highlight_users.add(highlight, user)
 
 		return highlight_users
