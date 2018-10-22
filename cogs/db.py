@@ -18,7 +18,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import logging
-import re
 
 import discord
 from discord.ext import commands
@@ -65,7 +64,7 @@ class Database:
 			# allow multiple users to have the same highlight phrase
 			highlight_users.add(highlight, user)
 
-		return highlight_users, self.build_re(highlight_users.keys())
+		return highlight_users
 
 	async def user_highlights(self, guild, user):
 		query = """
@@ -85,13 +84,6 @@ class Database:
 			WHERE "user" = $1
 		"""
 		return set([row['entity'] async for row in self.cursor(query, user)])
-
-	@staticmethod
-	def build_re(highlights):
-		s = r'(?i)\b'  # case insensitive
-		s += '|'.join(map(re.escape, highlights))
-		s += r'\b'
-		return s
 
 	### Actions
 

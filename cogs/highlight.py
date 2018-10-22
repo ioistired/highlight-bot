@@ -191,9 +191,11 @@ class Highlight:
 			await self.notify(user, highlight, message)
 
 	async def highlights(self, message):
-		highlight_users, regex = await self.db_cog.channel_highlights(message.channel)
+		highlight_users = await self.db_cog.channel_highlights(message.channel)
 		if not highlight_users:
 			return
+
+		regex = self.build_re(set(highlight_users.keys()))
 
 		seen_users = set()
 		for match in re.finditer(regex, message.content):
@@ -207,6 +209,13 @@ class Highlight:
 				if user not in seen_users and user != message.author:
 					yield user, highlight
 					seen_users.add(user)
+
+	@staticmethod
+	def build_re(highlights):
+		s = r'(?i)\b'  # case insensitive
+		s += '|'.join(map(re.escape, highlights))
+		s += r'\b'
+		return s
 
 	async def blocked(self, user: int, message):
 		blocks = await self.db_cog.blocks(user)
