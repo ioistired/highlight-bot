@@ -69,14 +69,16 @@ class Highlight:
 		with contextlib.suppress(discord.HTTPException):
 			await user.send(**message)
 
-	async def notification_message(self, user, highlight, message):
+	@classmethod
+	async def notification_message(cls, user, highlight, message):
 		content = (
 			f'In {message.channel.mention} for server {message.guild.name}, '
 			f'you were mentioned with highlight word **{highlight}**')
 
 		embed = discord.Embed()
+		embed.color = discord.Color.blurple()
 		embed.title = highlight
-		embed.description = await self.embed_description(message)
+		embed.description = await cls.embed_description(message)
 		embed.set_author(name=message.author.name, icon_url=message.author.avatar_url_as(format='png', size=64))
 		embed.set_footer(text='Triggered')  # "Triggered today at 21:21"
 		embed.timestamp = message.created_at
