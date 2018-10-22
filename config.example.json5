@@ -2,9 +2,15 @@
 	prefix: null,  // if set to null, the prefix will be @mention only
 	sharded: false,
 
+	// remember: since this bot is AGPLv3-licensed
+	// if you change the code, you MUST publish your changes as well.
+	// so configure this link accordingly.
+	repo: 'https://github.com/bmintz/highlight-bot',
+
 	startup_extensions: [
 		'cogs.db', // goes first because later cogs may depend on it
 		'cogs.highlight',
+		'cogs.meta',
 		'ben_cogs.misc',
 		'ben_cogs.debug',
 		'ben_cogs.stats',
