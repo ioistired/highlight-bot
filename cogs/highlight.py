@@ -137,6 +137,47 @@ class Highlight:
 		else:
 			await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
 
+	@commands.command(name='delete-my-account')
+	async def delete_my_account(self, context):
+		"""Deletes all information I have on you.
+
+		This will delete:
+			• All your highlight words or phrases, from every server.
+			• All your blocks
+		"""
+
+		confirmation_phrase = 'Yes, delete my account.'
+		prompt = (
+			 'Are you sure you want to delete your account? '
+			f'To confirm, please say “{confirmation_phrase}” exactly.')
+
+		if not await self.confirm(context, prompt, confirmation_phrase):
+			return
+
+		status_message = await context.send('Deleting your account…')
+
+		await self.db_cog.delete_account(context.author.id)
+
+		await status_message.delete()
+		await context.send(f"{context.author.mention} I've deleted your account successfully.")
+
+	async def confirm(self, context, prompt, required_phrase, *, timeout=30):
+		await context.send(prompt)
+
+		def check(message):
+			return (
+				message.author == context.author
+				and message.channel == context.channel
+				and message.content == required_phrase)
+
+		try:
+			await self.bot.wait_for('message', check=check, timeout=timeout)
+		except asyncio.TimeoutError:
+			await context.send('Confirmation phrase not received in time. Please try again.')
+			return False
+		else:
+			return True
+
 	def delete_later(self, message, delay=5):
 		async def delete_after():
 			await asyncio.sleep(delay)

@@ -174,6 +174,10 @@ class Database:
 				AND entity = $2
 		""", user, entity)
 
+	async def delete_account(self, user):
+		for table in 'highlights', 'blocks':
+			await self.bot.pool.execute(f'DELETE FROM {table} WHERE "user" = $1', user)
+
 	async def cursor(self, query, *args):
 		async with self.bot.pool.acquire() as connection:
 			async with connection.transaction():
