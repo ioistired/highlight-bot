@@ -11,13 +11,13 @@
 		'ben_cogs.ie_jishaku'],
 
 	ignore_bots: {
-		default: true,
+		default: true,  // whether to generally ignore bots
 
 		overrides: {
-			guilds: [],
-			channels: []}},
+			guilds: [],  // specific guilds for which the default should be inverted
+			channels: []}},  // ditto but for channels
 
-	database: { // if any value is left null, env vars or defaults will be used instead
+	database: {  // if any value is left null, env vars or defaults will be used instead
 		user: null,
 		password: null,
 		database: null,
@@ -29,4 +29,12 @@
 		stats: {
 			'bots.discord.pw': null,
 			'discordbots.org': null,
-			'botsfordiscord.com': null}}}
+			'botsfordiscord.com': null}}
+
+	// if defined and truthy, this should be a dict
+	//	structure: {
+	//		False: <emoji to send users on failure>,
+	//		True: <emoji to send users on success>
+	//	}
+	// if left blank, reasonable defaults will be used
+	success_or_failure_emojis: null}

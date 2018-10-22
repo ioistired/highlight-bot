@@ -17,16 +17,134 @@ You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
+import asyncio
 import contextlib
 import re
+import typing
 
 import discord
 from discord.ext import commands
+
+import utils
+
+Entity = typing.Union[discord.Member, discord.TextChannel, discord.CategoryChannel]
+
+def guild_only_command(*args, **kwargs):
+	def wrapper(func):
+		# wooo, currying
+		return commands.guild_only()(commands.command(*args, **kwargs))(func)
+	return wrapper
 
 class Highlight:
 	def __init__(self, bot):
 		self.bot = bot
 		self.db_cog = self.bot.get_cog('Database')
+
+	### Commands
+
+	@guild_only_command(aliases=['list'])
+	async def show(self, context):
+		"""Shows all your highlights words or phrases."""
+		self.delete_later(context.message)
+
+		highlights = await self.db_cog.user_highlights(context.guild.id, context.author.id)
+		if not highlights:
+			return await context.send('You do not have any highlight words or phrases set up.')
+
+		embed = discord.Embed()
+		embed.set_author(name=context.author.name, icon_url=context.author.avatar_url_as(format='png', size=64))
+		embed.add_field(name='Triggers', value='\n'.join(highlights), inline=False)
+		embed.set_footer(text=f'{len(highlights)} triggers')
+
+		await context.send(embed=embed, delete_after=15)
+
+	@guild_only_command(usage='<word or phrase>')
+	async def add(self, context, *, highlight):
+		"""Adds a highlight word or phrase.
+
+		Highlight words and phrases are not case-sensitive,
+		so coffee, Coffee, and COFFEE will all notify you.
+
+		When a highlight word is found, the bot will send you
+		a private message with the message that triggered it
+		along with context.
+
+		To prevent abuse of the service, you may only have up to 10
+		highlight word or phrases.
+		"""
+		self.delete_later(context.message)
+		try:
+			await self.db_cog.add(context.guild.id, context.author.id, highlight)
+		except commands.UserInputError:
+			await context.try_add_reaction(utils.SUCCESS_EMOJIS[False])
+			raise
+		else:
+			await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
+
+	@guild_only_command(usage='<word or phrase>')
+	async def remove(self, context, *, highlight):
+		"""Removes a previously registered highlight word or phrase.
+
+		Highlight words and phrases are not case-sensitive,
+		so coffee, Coffee, and COFFEE will all notify you.
+		"""
+		self.delete_later(context.message)
+		await self.db_cog.remove(context.guild.id, context.author.id, highlight)
+		await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
+
+	@guild_only_command()
+	async def block(self, context, *, entity: Entity):
+		"""Blocks a member, channel, or channel category from highlighting you.
+
+		This is functionally equivalent to the Discord block feature,
+		which blocks them globally. This is not a per-server block.
+		"""
+		self.delete_later(context.message)
+		await self.db_cog.block(context.author.id, entity.id)
+		await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
+
+	@guild_only_command()
+	async def unblock(self, context, *, entity: Entity):
+		"""Unblocks a member or channel from mentioning you.
+
+		This reverts a previous block action.
+		"""
+		self.delete_later(context.message)
+		await self.db_cog.unblock(context.author.id, entity.id)
+		await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
+
+	@guild_only_command()
+	async def clear(self, context):
+		"""Removes all your highlight words or phrases."""
+		self.delete_later(context.message)
+		await self.db_cog.clear(context.guild.id, context.author.id)
+		await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
+
+	@guild_only_command(name='import')
+	async def import_(self, context, server: int):
+		"""Imports your highlight words from another server.
+
+		This is a copy operation, so if you remove a highlight word
+		from the other server later, it is not reflected in the new
+		server.
+		"""
+		self.delete_later(context.message)
+		try:
+			await self.db_cog.import_(source_guild=server, target_guild=context.guild.id, user=context.author.id)
+		except commands.UserInputError:
+			await context.try_add_reaction(utils.SUCCESS_EMOJIS[False])
+			raise
+		else:
+			await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
+
+	def delete_later(self, message, delay=5):
+		async def delete_after():
+			await asyncio.sleep(delay)
+			with contextlib.suppress(discord.HTTPException):
+				await message.delete()
+		self.bot.loop.create_task(delete_after())
+
+	### Events
 
 	async def on_message(self, message):
 		if not message.guild:
@@ -80,7 +198,7 @@ class Highlight:
 		embed.title = highlight
 		embed.description = await cls.embed_description(message)
 		embed.set_author(name=message.author.name, icon_url=message.author.avatar_url_as(format='png', size=64))
-		embed.set_footer(text='Triggered')  # "Triggered today at 21:21"
+		embed.set_footer(text='Triggered')	# "Triggered today at 21:21"
 		embed.timestamp = message.created_at
 
 		return dict(content=content, embed=embed)

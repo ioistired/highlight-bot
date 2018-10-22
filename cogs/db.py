@@ -84,7 +84,7 @@ class Database:
 
 	## Actions
 
-	async def add_highlight(self, guild, user, highlight):
+	async def add(self, guild, user, highlight):
 		await self._add_highlight_check(guild, user, highlight)
 
 		await self.bot.pool.execute("""
@@ -105,16 +105,16 @@ class Database:
 		if count >= LIMIT:
 			raise TooManyHighlights('You have too many highlight words or phrases.')
 
-	async def delete_highlight(self, guild, user, highlight):
+	async def remove(self, guild, user, highlight):
 		await self.bot.pool.execute("""
 			DELETE FROM highlights
 			WHERE
 				guild = $1
 				AND "user" = $2
-				AND LOWER(name) = LOWER($3)
+				AND LOWER(highlight) = LOWER($3)
 		""", guild, user, highlight)
 
-	async def clear_highlights(self, guild, user):
+	async def clear(self, guild, user):
 		await self.bot.pool.execute("""
 			DELETE FROM highlights
 			WHERE
@@ -122,7 +122,7 @@ class Database:
 				AND "user" = $2
 		""", guild, user)
 
-	async def import_highlights(self, source_guild, target_guild, user):
+	async def import_(self, source_guild, target_guild, user):
 		await self._import_highlights_check(source_guild, target_guild, user)
 
 		await self.bot.pool.execute("""
@@ -137,7 +137,7 @@ class Database:
 
 	async def _import_highlights_check(self, source_guild, target_guild, user):
 		source_guild_count = await self.highlight_count(source_guild, user)
-		target_guild_count = await self.user.highlight_count(target_guild, user)
+		target_guild_count = await self.highlight_count(target_guild, user)
 		total = source_guild_count + target_guild_count
 
 		if total > LIMIT * 2:

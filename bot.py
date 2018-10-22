@@ -23,6 +23,7 @@ import contextlib
 import logging
 import os.path
 import re
+import traceback
 import uuid
 
 import asyncpg
@@ -30,10 +31,17 @@ import discord
 from discord.ext import commands
 import json5
 
+import utils
+
 BASE_DIR = os.path.dirname(__file__)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+class CustomContext(commands.Context):
+	async def try_add_reaction(self, emoji):
+		with contextlib.suppress(discord.HTTPException):
+			await self.message.add_reaction(emoji)
 
 class HighlightBotBase(commands.bot.BotBase):
 	def __init__(self, *, config):
@@ -45,6 +53,15 @@ class HighlightBotBase(commands.bot.BotBase):
 		super().__init__(
 			command_prefix=self.get_prefix_,
 			description='DMs you when certain words are said in chat.')
+		self.default_help_command = self.remove_command('help')
+		self.add_command(self.help_command)
+
+	@commands.command(name='help')
+	async def help_command(self, context, *commands):
+		"""Shows this message"""
+		if not commands:
+			commands = ('Highlight',)
+		await context.invoke(self.default_help_command, *commands)
 
 	def get_prefix_(self, bot, message):
 		prefixes = []
@@ -66,6 +83,10 @@ class HighlightBotBase(commands.bot.BotBase):
 		for key in 'guilds', 'channels':
 			self.config['ignore_bots']['overrides'][key] = (
 				frozenset(self.config['ignore_bots']['overrides'][key]))
+
+		success_emojis = self.config.get('success_or_failure_emojis')
+		if success_emojis:
+			utils.SUCCESS_EMOJIS = success_emojis
 
 	async def on_ready(self):
 		await self.change_presence(activity=self.game)
@@ -91,6 +112,9 @@ class HighlightBotBase(commands.bot.BotBase):
 		# overridden because the default process_commands now ignores bots
 		context = await self.get_context(message)
 		await self.invoke(context)
+
+	def get_context(self, message, *, cls=None):
+		return super().get_context(message, cls=cls or CustomContext)
 
 	def should_reply(self, message):
 		return not (
