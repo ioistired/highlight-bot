@@ -47,23 +47,20 @@ class HighlightBotBase(commands.bot.BotBase):
 			description='DMs you when certain words are said in chat.')
 
 	def get_prefix_(self, bot, message):
-		prefixes = ()
+		prefixes = []
 		mention_match = re.search(fr'({bot.user.mention}|<@!{bot.user.id}>)\s+', message.content)
 		if mention_match:
-			prefixes += (mention_match[0],)
+			prefixes.append(mention_match[0])
 
 		match = re.search(fr'{self.config["prefix"]}', message.content, re.IGNORECASE)
 
 		if match is not None:
-			prefixes += (match[0],)
+			prefixes.append(match[0])
 
-		if not prefixes:
-			# something that's guaranteed to not be in the message
-			# because we have to return *something*
-			# annoying af
-			return str(uuid.uuid4())
-
-		return prefixes
+		# a UUID is something that's practically guaranteed to not be in the message
+		# because we have to return *something*
+		# annoying af
+		return prefixes or str(uuid.uuid4())
 
 	def _process_config(self):
 		for key in 'guilds', 'channels':
