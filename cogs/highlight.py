@@ -154,11 +154,7 @@ class Highlight:
 		if not await self.confirm(context, prompt, confirmation_phrase):
 			return
 
-		status_message = await context.send('Deleting your account…')
-
 		await self.db_cog.delete_account(context.author.id)
-
-		await status_message.delete()
 		await context.send(f"{context.author.mention} I've deleted your account successfully.")
 
 	async def confirm(self, context, prompt, required_phrase, *, timeout=30):
