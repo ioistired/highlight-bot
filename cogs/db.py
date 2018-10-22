@@ -64,7 +64,7 @@ class Database:
 						highlights.user = blocks.user
 						AND entity = $2
 						OR entity = $3)
-		""", channel.guild.id, channel.id, getattr(channel.category, 'id', None):
+		""", channel.guild.id, channel.id, getattr(channel.category, 'id', None)):
 			highlight_users.add(highlight, user)
 
 		return highlight_users
