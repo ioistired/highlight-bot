@@ -185,7 +185,7 @@ class HighlightBot(commands.AutoShardedBot):
 	async def logout(self):
 		with contextlib.suppress(AttributeError):
 			await self.pool.close()
-		await super.logout()
+		await super().logout()
 
 if __name__ == '__main__':
 	with open(os.path.join(BASE_DIR, 'config.json5')) as f:
