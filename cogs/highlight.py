@@ -244,7 +244,8 @@ class Highlight:
 		for match in re.finditer(regex, message.content):
 			highlight = match[0]
 			for user in highlight_users.getall(highlight):
-				if await self.blocked(user, message):
+				# we only have to check if the *user* is blocked here bc the database filters out blocked channels
+				if user in await self.db_cog.blocks(message.author.id):
 					continue
 
 				user = self.bot.get_user(user) or await self.bot.get_user_info(user)
@@ -259,15 +260,6 @@ class Highlight:
 		s += '|'.join(map(re.escape, highlights))
 		s += r'\b'
 		return s
-
-	async def blocked(self, user: int, message):
-		blocks = await self.db_cog.blocks(user)
-		return any(
-			entity in blocks
-			for entity in (
-				message.channel.id,
-				message.author.id,
-				getattr(message.channel.category, 'id', None)))
 
 	@classmethod
 	async def notify(cls, user, highlight, message):
