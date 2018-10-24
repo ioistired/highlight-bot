@@ -19,6 +19,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import asyncio
 import contextlib
+from datetime import datetime
 import re
 import typing
 
@@ -28,6 +29,8 @@ from discord.ext import commands
 import utils
 
 Entity = typing.Union[discord.Member, discord.TextChannel, discord.CategoryChannel]
+# how many seconds after a user is active in a channel before they are no longer considered "recently spoken"
+LAST_SPOKEN_CUTOFF = 10
 
 def guild_only_command(*args, **kwargs):
 	def wrapper(func):
@@ -192,11 +195,20 @@ class Highlight:
 			if (message.channel.id, user.id) not in self.recently_spoken:
 				await self.notify(user, highlight, message)
 
+		await self._track_spoken((message.channel.id, message.author.id))
+
+	async def on_typing(self, channel, user, when):
+		diff = (datetime.utcnow() - when).total_seconds()
+		if diff < LAST_SPOKEN_CUTOFF:
+			# e.g. if cutoff = 10 and diff = 3, consider them recently spoken for 7s
+			await self._track_spoken((channel.id, user.id), delay=LAST_SPOKEN_CUTOFF - diff)
+
+	async def _track_spoken(self, info, *, delay=LAST_SPOKEN_CUTOFF):
 		# keep track of whether the user recently spoke in this channel
 		# this is to prevent highlighting someone while they're probably still looking at the channel
-		self.recently_spoken.add(message)
-		await asyncio.sleep(10)
-		self.recently_spoken.discard(message)
+		self.recently_spoken.add(info)
+		await asyncio.sleep(delay)
+		self.recently_spoken.discard(info)
 
 	async def highlights(self, message):
 		highlight_users = await self.db_cog.channel_highlights(message.channel)
