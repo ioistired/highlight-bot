@@ -18,6 +18,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 import asyncio
+import collections
 import contextlib
 from datetime import datetime
 import re
@@ -42,7 +43,7 @@ class Highlight:
 	def __init__(self, bot):
 		self.bot = bot
 		self.db_cog = self.bot.get_cog('Database')
-		self.recently_spoken = RecentlySpoken()
+		self.recently_spoken = PositiveCounter()
 
 	### Commands
 
@@ -204,11 +205,33 @@ class Highlight:
 			await self._track_spoken((channel.id, user.id), delay=LAST_SPOKEN_CUTOFF - diff)
 
 	async def _track_spoken(self, info, *, delay=LAST_SPOKEN_CUTOFF):
-		# keep track of whether the user recently spoke in this channel
-		# this is to prevent highlighting someone while they're probably still looking at the channel
-		self.recently_spoken.add(info)
+		# Keep track of whether the user recently spoke in this channel.
+		# This is to prevent highlighting someone while they're probably still looking at the channel.
+		# Why use a counter, instead of a set?
+		# Suppose we use a set, and the delay is 10 seconds.
+		#
+		# message event 1:
+		# add
+		# sleep 10
+		#
+		# 3s later, message event 2:
+		# add  (no-op, already in set)
+		# sleep 10
+		#
+		# 7s later, switch to m1: (7 + 3 = delay)
+		# remove
+		#
+		# 3s later, m2:
+		# remove  (no-op, not in set)
+		#
+		# In this scenario, the user is considered "not spoken"
+		# 3 seconds early, when m1 is switched back to.
+		# To avoid this, we use a counter which stores how many times the user has recently spoken.
+		# Each increment is paired with a decrement N seconds later,
+		# and the user is not considered inactive until their count in a given channel reaches 0.
+		self.recently_spoken[info] += 1
 		await asyncio.sleep(delay)
-		self.recently_spoken.discard(info)
+		self.recently_spoken[info] -= 1
 
 	async def highlights(self, message):
 		highlight_users = await self.db_cog.channel_highlights(message.channel)
@@ -285,44 +308,13 @@ class Highlight:
 		formatted = f'{date} {message.author}: {message.content}'
 		return formatted
 
+class PositiveCounter(collections.Counter):
+	def __setitem__(self, key, count):
+		if count > 0:
+			return super().__setitem__(key, count)
 
-class RecentlySpoken(set):
-	"""a set that keeps track of recently spoken members, per channel
-	this is a convenience class that allows you to do
-	myset.add(message)
-	in order to say “the author of this message recently spoke in this message's channel”
-	testing for containment, set.add, set.remove, and set.discard work the same way.
-	"""
-
-	def __init__(self, xs=None):
-		if xs is None:
-			super().__init__()
-		else:
-			super().__init__(map(self._convert, xs))
-
-	def _convert(self, message: discord.Message):
-		return message.channel.id, message.author.id
-
-	def _converted_method(name):
-		def meth(self, message: discord.Message):
-			orig = getattr(super(), name)
-			return orig(self._convert(message))
-		meth.__name__ = name
-		return meth
-
-	add = _converted_method('add')
-	remove = _converted_method('remove')
-	discard = _converted_method('discard')
-
-	del _converted_method
-
-	def __contains__(self, other):
-		if isinstance(other, discord.Message):
-			return self._convert(other) in self
-		return super().__contains__(other)
-
-	def __repr__(self):
-		return f'{type(self).__qualname__}({set(self)!r})'
+		with contextlib.suppress(KeyError):
+			del self[key]
 
 def setup(bot):
 	bot.add_cog(Highlight(bot))
