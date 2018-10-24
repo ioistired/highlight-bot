@@ -48,12 +48,14 @@ class HighlightBot(commands.AutoShardedBot):
 	def __init__(self, *, config):
 		self.config = config
 		self._process_config()
+		self._fallback_prefix = str(uuid.uuid4())
 
 		self.db_ready = asyncio.Event()
 
 		super().__init__(
 			command_prefix=self.get_prefix_,
 			description='DMs you when certain words are said in chat.')
+
 		self.default_help_command = self.remove_command('help')
 		self.add_command(self.help_command)
 
@@ -78,7 +80,7 @@ class HighlightBot(commands.AutoShardedBot):
 		# a UUID is something that's practically guaranteed to not be in the message
 		# because we have to return *something*
 		# annoying af
-		return prefixes or str(uuid.uuid4())
+		return prefixes or self._fallback_prefix
 
 	def _process_config(self):
 		for key in 'guilds', 'channels':
