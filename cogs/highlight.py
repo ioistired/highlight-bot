@@ -258,8 +258,9 @@ class Highlight:
 
 	@staticmethod
 	def build_re(highlights):
-		s = r'(?i)(?:\b'  # case insensitive
-		s += '|'.join(map(re.escape, highlights))
+		s  = r'(?i)'  # case insensitive
+		s += r'(?:\b'
+		s += r'|'.join(map(re.escape, highlights))
 		s += r')\b'
 		return s
 
