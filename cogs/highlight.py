@@ -237,34 +237,62 @@ class Highlight:
 		await asyncio.sleep(delay)
 		self.recently_spoken[info] -= 1
 
-	async def highlights(self, message):
-		highlight_users = await self.db_cog.channel_highlights(message.channel)
-		if not highlight_users:
-			return
+	def highlights(self, message):
+		return self.HighlightFinder(self.bot, message).highlights()
 
-		regex = self.build_re(set(highlight_users.keys()))
+	# we use a class to have shared state which is isolated from the cog
+	# we use a nested class so as to have HighlightUser near to where it's used
+	class HighlightFinder:
+		__slots__ = ('bot', 'db_cog', 'message', 'seen_users', 'highlight_users')
 
-		seen_users = set()
-		for match in re.finditer(regex, message.content):
-			highlight = match[0]
-			for user in highlight_users.getall(highlight):
-				# we only have to check if the *user* is blocked here bc the database filters out blocked channels
-				if user in await self.db_cog.blocks(message.author.id):
-					continue
+		def __init__(self, bot, message):
+			self.bot = bot
+			self.db_cog = self.bot.get_cog('Database')
+			self.message = message
+			self.seen_users = set()
 
+		async def highlights(self):
+			highlight_users = await self.db_cog.channel_highlights(self.message.channel)
+			if not highlight_users:
+				return
+			self.highlight_users = highlight_users
+
+			regex = self.build_re(set(self.highlight_users.keys()))
+
+			for match in re.finditer(regex, self.message.content):
+				highlight = match[0]
+				async for user in self.users_highlighted_by(highlight):
+					yield user, highlight
+
+		async def users_highlighted_by(self, highlight):
+			for user in self.highlight_users.getall(highlight):
 				user = self.bot.get_user(user) or await self.bot.get_user_info(user)
 
-				if user not in seen_users and user != message.author:
-					yield user, highlight
-					seen_users.add(user)
+				if await self.should_notify_user(user, highlight):
+					yield user
 
-	@staticmethod
-	def build_re(highlights):
-		s  = r'(?i)'  # case insensitive
-		s += r'(?:\b'
-		s += r'|'.join(map(re.escape, highlights))
-		s += r')\b'
-		return s
+		async def should_notify_user(self, user, highlight):
+			"""assuming that highlight was found in the message, return whether to notify the user"""
+			if await self.blocked(user):
+				return False
+
+			if user not in self.seen_users and user != self.message.author:
+				self.seen_users.add(user)
+				return True
+			return False
+
+		async def blocked(self, user):
+			"""return whtether the highlightee is blocked by the highlighter"""
+			# we only have to check if the *user* is blocked here bc the database filters out blocked channels
+			return user in await self.db_cog.blocks(self.message.author.id)
+
+		@staticmethod
+		def build_re(highlights):
+			s  = r'(?i)'  # case insensitive
+			s += r'(?:\b'
+			s += r'|'.join(map(re.escape, highlights))
+			s += r')\b'
+			return s
 
 	@classmethod
 	async def notify(cls, user, highlight, message):
