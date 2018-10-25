@@ -265,15 +265,19 @@ class Highlight:
 
 	@classmethod
 	async def notify(cls, user, highlight, message):
-		diff = (datetime.utcnow() - message.created_at).total_seconds()
-		if diff < NEW_MESSAGES_TIMEOUT:
-			# allow new messages to come in so the user gets some more context
-			await asyncio.sleep(NEW_MESSAGES_TIMEOUT - diff)
+		# allow new messages to come in so the user gets some more context
+		await self.sleep_difference(message.created_at, NEW_MESSAGES_TIMEOUT)
 
 		message = await cls.notification_message(user, highlight, message)
-
 		with contextlib.suppress(discord.HTTPException):
 			await user.send(**message)
+
+	@staticmethod
+	async def sleep_difference(time: datetime, max_delay: float):
+		"""ensure that max_delay seconds have elapsed since time"""
+		diff = (datetime.utcnow() - time).total_seconds()
+		if diff < max_delay:
+			await asyncio.sleep(max_delay - diff)
 
 	@classmethod
 	async def notification_message(cls, user, highlight, message):
@@ -292,6 +296,7 @@ class Highlight:
 		embed.title = highlight
 		embed.description = await cls.embed_description(message)
 		embed.set_author(name=message.author.name, icon_url=message.author.avatar_url_as(format='png', size=64))
+
 		embed.set_footer(text='Triggered')	# "Triggered today at 21:21"
 		embed.timestamp = message.created_at
 
