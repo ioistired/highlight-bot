@@ -38,7 +38,7 @@ NEW_MESSAGES_TIMEOUT = 9
 def guild_only_command(*args, **kwargs):
 	def wrapper(func):
 		# wooo, currying
-		return commands.guild_only()(commands.command(*args, **kwargs))(func)
+		return commands.guild_only()(commands.command(*args, **kwargs)(func))
 	return wrapper
 
 class Highlight:
