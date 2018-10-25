@@ -201,10 +201,7 @@ class Highlight:
 		await self._track_spoken((message.channel.id, message.author.id))
 
 	async def on_typing(self, channel, user, when):
-		diff = (datetime.utcnow() - when).total_seconds()
-		if diff < LAST_SPOKEN_CUTOFF:
-			# e.g. if cutoff = 10 and diff = 3, consider them recently spoken for 7s
-			await self._track_spoken((channel.id, user.id), delay=LAST_SPOKEN_CUTOFF - diff)
+		await self._track_spoken((channel.id, user.id), delay=self.time_difference_needed(when, LAST_SPOKEN_CUTOFF))
 
 	async def _track_spoken(self, info, *, delay=LAST_SPOKEN_CUTOFF):
 		"""Keep track of whether the user recently spoke in this channel.
@@ -297,18 +294,17 @@ class Highlight:
 	@classmethod
 	async def notify(cls, user, highlight, message):
 		# allow new messages to come in so the user gets some more context
-		await self.sleep_difference(message.created_at, NEW_MESSAGES_TIMEOUT)
+		await asyncio.sleep(cls.time_difference_needed(message.created_at, NEW_MESSAGES_TIMEOUT))
 
 		message = await cls.notification_message(user, highlight, message)
 		with contextlib.suppress(discord.HTTPException):
 			await user.send(**message)
 
 	@staticmethod
-	async def sleep_difference(time: datetime, max_delay: float):
-		"""ensure that max_delay seconds have elapsed since time"""
+	def time_difference_needed(time: datetime, max_delay: float):
+		"""return the number of seconds needed to ensure that max_delay seconds have elapsed since time"""
 		diff = (datetime.utcnow() - time).total_seconds()
-		if diff < max_delay:
-			await asyncio.sleep(max_delay - diff)
+		return max(0, diff)
 
 	@classmethod
 	async def notification_message(cls, user, highlight, message):
