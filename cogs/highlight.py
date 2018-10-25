@@ -207,8 +207,10 @@ class Highlight:
 			await self._track_spoken((channel.id, user.id), delay=LAST_SPOKEN_CUTOFF - diff)
 
 	async def _track_spoken(self, info, *, delay=LAST_SPOKEN_CUTOFF):
-		# Keep track of whether the user recently spoke in this channel.
-		# This is to prevent highlighting someone while they're probably still looking at the channel.
+		"""Keep track of whether the user recently spoke in this channel.
+
+		This is to prevent highlighting someone while they're probably still looking at the channel.
+		"""
 		# Why use a counter, instead of a set?
 		# Suppose we use a set, and the delay is 10 seconds.
 		#
@@ -230,7 +232,7 @@ class Highlight:
 		# 3 seconds early, when m1 is switched back to.
 		# To avoid this, we use a counter which stores how many times the user has recently spoken.
 		# Each increment is paired with a decrement N seconds later,
-		# and the user is not considered inactive until their count in a given channel reaches 0.
+		# and the user is considered active until their count in a given channel reaches 0.
 		self.recently_spoken[info] += 1
 		await asyncio.sleep(delay)
 		self.recently_spoken[info] -= 1
