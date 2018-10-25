@@ -258,9 +258,9 @@ class Highlight:
 
 	@staticmethod
 	def build_re(highlights):
-		s = r'(?i)\b'  # case insensitive
+		s = r'(?i)(?:\b'  # case insensitive
 		s += '|'.join(map(re.escape, highlights))
-		s += r'\b'
+		s += r')\b'
 		return s
 
 	@classmethod
