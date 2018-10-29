@@ -33,7 +33,7 @@ Entity = typing.Union[discord.Member, discord.TextChannel, discord.CategoryChann
 # how many seconds after a user is active in a channel before they are no longer considered "recently spoken"
 LAST_SPOKEN_CUTOFF = 10
 # how many seconds to wait for new messages after a user has been highlighted
-NEW_MESSAGES_TIMEOUT = 9
+NEW_MESSAGES_DELAY = 10
 
 def guild_only_command(*args, **kwargs):
 	def wrapper(func):
@@ -155,7 +155,7 @@ class Highlight:
 	@classmethod
 	async def notify(cls, user, highlight, message):
 		# allow new messages to come in so the user gets some more context
-		await asyncio.sleep(cls.time_difference_needed(message.created_at, NEW_MESSAGES_TIMEOUT))
+		await asyncio.sleep(cls.time_difference_needed(message.created_at, NEW_MESSAGES_DELAY))
 
 		message = await cls.notification_message(user, highlight, message)
 		with contextlib.suppress(discord.HTTPException):
