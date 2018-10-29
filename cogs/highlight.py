@@ -24,6 +24,7 @@ from datetime import datetime
 import re
 import typing
 
+import autoslot
 import discord
 from discord.ext import commands
 
@@ -98,8 +99,8 @@ class Highlight:
 
 	# we use a class to have shared state which is isolated from the cog
 	# we use a nested class so as to have HighlightUser defined close to where it's used
-	class HighlightFinder:
-		__slots__ = ('bot', 'db_cog', 'message', 'seen_users', 'highlight_users')
+	class HighlightFinder(metaclass=autoslot.SlotsMeta):
+		__slots__ = {'highlight_users'}
 
 		def __init__(self, bot, message):
 			self.bot = bot
