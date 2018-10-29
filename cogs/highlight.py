@@ -47,147 +47,6 @@ class Highlight:
 		self.db_cog = self.bot.get_cog('Database')
 		self.recently_spoken = PositiveCounter()
 
-	### Commands
-
-	@guild_only_command(aliases=['list'])
-	async def show(self, context):
-		"""Shows all your highlights words or phrases."""
-		self.delete_later(context.message)
-
-		highlights = await self.db_cog.user_highlights(context.guild.id, context.author.id)
-		if not highlights:
-			return await context.send('You do not have any highlight words or phrases set up.')
-
-		embed = discord.Embed()
-		embed.set_author(name=context.author.name, icon_url=context.author.avatar_url_as(format='png', size=64))
-		embed.add_field(name='Triggers', value='\n'.join(highlights), inline=False)
-		embed.set_footer(text=f'{len(highlights)} triggers')
-
-		await context.send(embed=embed, delete_after=15)
-
-	@guild_only_command(usage='<word or phrase>')
-	async def add(self, context, *, highlight):
-		"""Adds a highlight word or phrase.
-
-		Highlight words and phrases are not case-sensitive,
-		so coffee, Coffee, and COFFEE will all notify you.
-
-		When a highlight word is found, the bot will send you
-		a private message with the message that triggered it
-		along with context.
-
-		To prevent abuse of the service, you may only have up to 10
-		highlight word or phrases.
-		"""
-		self.delete_later(context.message)
-		try:
-			await self.db_cog.add(context.guild.id, context.author.id, highlight)
-		except commands.UserInputError:
-			await context.try_add_reaction(utils.SUCCESS_EMOJIS[False])
-			raise
-		else:
-			await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
-
-	@guild_only_command(usage='<word or phrase>')
-	async def remove(self, context, *, highlight):
-		"""Removes a previously registered highlight word or phrase.
-
-		Highlight words and phrases are not case-sensitive,
-		so coffee, Coffee, and COFFEE will all notify you.
-		"""
-		self.delete_later(context.message)
-		await self.db_cog.remove(context.guild.id, context.author.id, highlight)
-		await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
-
-	@guild_only_command()
-	async def block(self, context, *, entity: Entity):
-		"""Blocks a member, channel, or channel category from highlighting you.
-
-		This is functionally equivalent to the Discord block feature,
-		which blocks them globally. This is not a per-server block.
-		"""
-		self.delete_later(context.message)
-		await self.db_cog.block(context.author.id, entity.id)
-		await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
-
-	@guild_only_command()
-	async def unblock(self, context, *, entity: Entity):
-		"""Unblocks a member or channel from mentioning you.
-
-		This reverts a previous block action.
-		"""
-		self.delete_later(context.message)
-		await self.db_cog.unblock(context.author.id, entity.id)
-		await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
-
-	@guild_only_command()
-	async def clear(self, context):
-		"""Removes all your highlight words or phrases."""
-		self.delete_later(context.message)
-		await self.db_cog.clear(context.guild.id, context.author.id)
-		await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
-
-	@guild_only_command(name='import')
-	async def import_(self, context, server: int):
-		"""Imports your highlight words from another server.
-
-		This is a copy operation, so if you remove a highlight word
-		from the other server later, it is not reflected in the new
-		server.
-		"""
-		self.delete_later(context.message)
-		try:
-			await self.db_cog.import_(source_guild=server, target_guild=context.guild.id, user=context.author.id)
-		except commands.UserInputError:
-			await context.try_add_reaction(utils.SUCCESS_EMOJIS[False])
-			raise
-		else:
-			await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
-
-	@commands.command(name='delete-my-account')
-	async def delete_my_account(self, context):
-		"""Deletes all information I have on you.
-
-		This will delete:
-			• All your highlight words or phrases, from every server.
-			• All your blocks
-		"""
-
-		confirmation_phrase = 'Yes, delete my account.'
-		prompt = (
-			 'Are you sure you want to delete your account? '
-			f'To confirm, please say “{confirmation_phrase}” exactly.')
-
-		if not await self.confirm(context, prompt, confirmation_phrase):
-			return
-
-		await self.db_cog.delete_account(context.author.id)
-		await context.send(f"{context.author.mention} I've deleted your account successfully.")
-
-	async def confirm(self, context, prompt, required_phrase, *, timeout=30):
-		await context.send(prompt)
-
-		def check(message):
-			return (
-				message.author == context.author
-				and message.channel == context.channel
-				and message.content == required_phrase)
-
-		try:
-			await self.bot.wait_for('message', check=check, timeout=timeout)
-		except asyncio.TimeoutError:
-			await context.send('Confirmation phrase not received in time. Please try again.')
-			return False
-		else:
-			return True
-
-	def delete_later(self, message, delay=5):
-		async def delete_after():
-			await asyncio.sleep(delay)
-			with contextlib.suppress(discord.HTTPException):
-				await message.delete()
-		self.bot.loop.create_task(delete_after())
-
 	### Events
 
 	async def on_message(self, message):
@@ -346,6 +205,148 @@ class Highlight:
 		date = f'**{date}**' if is_highlight else date
 		formatted = f'{date} {message.author}: {message.content}'
 		return formatted
+
+	### Commands
+
+	@guild_only_command(aliases=['list'])
+	async def show(self, context):
+		"""Shows all your highlights words or phrases."""
+		self.delete_later(context.message)
+
+		highlights = await self.db_cog.user_highlights(context.guild.id, context.author.id)
+		if not highlights:
+			return await context.send('You do not have any highlight words or phrases set up.')
+
+		embed = discord.Embed()
+		embed.set_author(name=context.author.name, icon_url=context.author.avatar_url_as(format='png', size=64))
+		embed.add_field(name='Triggers', value='\n'.join(highlights), inline=False)
+		embed.set_footer(text=f'{len(highlights)} triggers')
+
+		await context.send(embed=embed, delete_after=15)
+
+	@guild_only_command(usage='<word or phrase>')
+	async def add(self, context, *, highlight):
+		"""Adds a highlight word or phrase.
+
+		Highlight words and phrases are not case-sensitive,
+		so coffee, Coffee, and COFFEE will all notify you.
+
+		When a highlight word is found, the bot will send you
+		a private message with the message that triggered it
+		along with context.
+
+		To prevent abuse of the service, you may only have up to 10
+		highlight word or phrases.
+		"""
+		self.delete_later(context.message)
+		try:
+			await self.db_cog.add(context.guild.id, context.author.id, highlight)
+		except commands.UserInputError:
+			await context.try_add_reaction(utils.SUCCESS_EMOJIS[False])
+			raise
+		else:
+			await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
+
+	@guild_only_command(usage='<word or phrase>')
+	async def remove(self, context, *, highlight):
+		"""Removes a previously registered highlight word or phrase.
+
+		Highlight words and phrases are not case-sensitive,
+		so coffee, Coffee, and COFFEE will all notify you.
+		"""
+		self.delete_later(context.message)
+		await self.db_cog.remove(context.guild.id, context.author.id, highlight)
+		await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
+
+	@guild_only_command()
+	async def block(self, context, *, entity: Entity):
+		"""Blocks a member, channel, or channel category from highlighting you.
+
+		This is functionally equivalent to the Discord block feature,
+		which blocks them globally. This is not a per-server block.
+		"""
+		self.delete_later(context.message)
+		await self.db_cog.block(context.author.id, entity.id)
+		await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
+
+	@guild_only_command()
+	async def unblock(self, context, *, entity: Entity):
+		"""Unblocks a member or channel from mentioning you.
+
+		This reverts a previous block action.
+		"""
+		self.delete_later(context.message)
+		await self.db_cog.unblock(context.author.id, entity.id)
+		await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
+
+	@guild_only_command()
+	async def clear(self, context):
+		"""Removes all your highlight words or phrases."""
+		self.delete_later(context.message)
+		await self.db_cog.clear(context.guild.id, context.author.id)
+		await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
+
+	@guild_only_command(name='import')
+	async def import_(self, context, server: int):
+		"""Imports your highlight words from another server.
+
+		This is a copy operation, so if you remove a highlight word
+		from the other server later, it is not reflected in the new
+		server.
+		"""
+		self.delete_later(context.message)
+		try:
+			await self.db_cog.import_(source_guild=server, target_guild=context.guild.id, user=context.author.id)
+		except commands.UserInputError:
+			await context.try_add_reaction(utils.SUCCESS_EMOJIS[False])
+			raise
+		else:
+			await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
+
+	@commands.command(name='delete-my-account')
+	async def delete_my_account(self, context):
+		"""Deletes all information I have on you.
+
+		This will delete:
+			• All your highlight words or phrases, from every server.
+			• All your blocks
+		"""
+
+		confirmation_phrase = 'Yes, delete my account.'
+		prompt = (
+			 'Are you sure you want to delete your account? '
+			f'To confirm, please say “{confirmation_phrase}” exactly.')
+
+		if not await self.confirm(context, prompt, confirmation_phrase):
+			return
+
+		await self.db_cog.delete_account(context.author.id)
+		await context.send(f"{context.author.mention} I've deleted your account successfully.")
+
+	async def confirm(self, context, prompt, required_phrase, *, timeout=30):
+		await context.send(prompt)
+
+		def check(message):
+			return (
+				message.author == context.author
+				and message.channel == context.channel
+				and message.content == required_phrase)
+
+		try:
+			await self.bot.wait_for('message', check=check, timeout=timeout)
+		except asyncio.TimeoutError:
+			await context.send('Confirmation phrase not received in time. Please try again.')
+			return False
+		else:
+			return True
+
+	def delete_later(self, message, delay=5):
+		async def delete_after():
+			await asyncio.sleep(delay)
+			with contextlib.suppress(discord.HTTPException):
+				await message.delete()
+		self.bot.loop.create_task(delete_after())
+
 
 class PositiveCounter(collections.Counter):
 	def __setitem__(self, key, count):
