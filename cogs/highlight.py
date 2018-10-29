@@ -97,7 +97,7 @@ class Highlight:
 		return self.HighlightFinder(self.bot, message).highlights()
 
 	# we use a class to have shared state which is isolated from the cog
-	# we use a nested class so as to have HighlightUser near to where it's used
+	# we use a nested class so as to have HighlightUser defined close to where it's used
 	class HighlightFinder:
 		__slots__ = ('bot', 'db_cog', 'message', 'seen_users', 'highlight_users')
 
