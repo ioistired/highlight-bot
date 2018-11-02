@@ -218,9 +218,9 @@ class Highlight:
 		if not highlights:
 			return await context.send('You do not have any highlight words or phrases set up.')
 
-		embed = discord.Embed()
-		embed.set_author(name=context.author.name, icon_url=context.author.avatar_url_as(format='png', size=64))
-		embed.add_field(name='Triggers', value='\n'.join(highlights), inline=False)
+		embed = self.author_embed(context.author)
+		embed.title = 'Triggers'
+		embed.description = '\n'.join(highlights)
 		embed.set_footer(text=f'{len(highlights)} triggers')
 
 		await context.send(embed=embed, delete_after=15)
@@ -258,6 +258,27 @@ class Highlight:
 		self.delete_later(context.message)
 		await self.db_cog.remove(context.guild.id, context.author.id, highlight)
 		await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
+
+	@commands.command(aliases=['blocks'])
+	async def blocked(self, context):
+		entities = []
+		for entity in await self.db_cog.blocks(context.author.id):
+			model_entity = (self.bot.get_channel(entity) or self.bot.get_user(entity))
+			entity = model_entity.mention or str(entity)
+			entities.append(entity)
+
+		embed = self.author_embed(context.author)
+		embed.title = 'Blocked'
+		embed.description='\n'.join(entities)
+		embed.set_footer(text=f'{len(entities)} entities blocked')
+
+		await context.send(embed=embed)
+
+	@staticmethod
+	def author_embed(author):
+		embed = discord.Embed()
+		embed.set_author(name=author.name, icon_url=author.avatar_url_as(format='png', size=64))
+		return embed
 
 	@guild_only_command()
 	async def block(self, context, *, entity: Entity):
