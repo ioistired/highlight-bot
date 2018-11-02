@@ -2,17 +2,6 @@
 
 It DMs you when certain words are said in certain channels.
 
-## TODO
-
-- [x] Initial prototype
-	- [x] regex generation
-	- [x] embed message
-	- [x] per category/channel/user blocklists
-	- [x] add / remove keyword via command
-- [x] Import from other server
-    - [x] via internal database function
-    - [x] via user-facing command
-
 ## [License](LICENSE.md)
 
 Copyright © 2018 Benjamin Mintz <bmintz@protonmail.com>
