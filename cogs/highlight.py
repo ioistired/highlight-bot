@@ -242,11 +242,8 @@ class Highlight:
 
 	@commands.command(aliases=['blocks'])
 	async def blocked(self, context):
-		entities = []
-		for entity in await self.db_cog.blocks(context.author.id):
-			model_entity = (self.bot.get_channel(entity) or self.bot.get_user(entity))
-			entity = model_entity.mention or str(entity)
-			entities.append(entity)
+		"""Shows you the users or channels that you have globally blocked."""
+		entities = tuple(map(self.format_entity, await self.db_cog.blocks(context.author.id)))
 
 		embed = self.author_embed(context.author)
 		embed.title = 'Blocked'
@@ -254,6 +251,19 @@ class Highlight:
 		embed.set_footer(text=f'{len(entities)} entities blocked')
 
 		await context.send(embed=embed)
+
+	def format_entity(self, entity):
+		channel = self.bot.get_channel(entity)
+		if channel:
+			if isinstance(channel, discord.CategoryChannel):
+				return f'📂 {channel.name}'
+			return f'🗨️ {channel.mention}'
+
+		user = self.bot.get_user(entity)
+		if user:
+			return f'👤 {user.mention}'
+
+		return f'❔ {entity}'
 
 	@staticmethod
 	def author_embed(author):
