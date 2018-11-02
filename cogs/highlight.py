@@ -46,7 +46,7 @@ class Highlight:
 	def __init__(self, bot):
 		self.bot = bot
 		self.db_cog = self.bot.get_cog('Database')
-		self.recently_spoken = PositiveCounter()
+		self.recently_spoken = utils.LRUDict(size=1_000)
 
 	### Events
 
@@ -54,45 +54,26 @@ class Highlight:
 		if not message.guild or not self.bot.should_reply(message):
 			return
 
-		async for user, highlight in self.highlights(message):
-			if (message.channel.id, user.id) not in self.recently_spoken:
-				await self.notify(user, highlight, message)
+		async for highlighted_user, highlight in self.highlights(message):
+			info = message.channel.id, highlighted_user.id
+			if not self.has_recently_spoken(info):
+				# add to the dict first since notify may sleep
+				# this is to prevent two messages sent in immediate succession
+				# from notifying the user twice
+				self.recently_spoken[info] = datetime.utcnow()
+				await self.notify(highlighted_user, highlight, message)
 
-		await self._track_spoken((message.channel.id, message.author.id))
+		self.recently_spoken[message.channel.id, message.author.id] = message.created_at
+
+	def has_recently_spoken(self, info, *, delay=LAST_SPOKEN_CUTOFF):
+		try:
+			return (datetime.utcnow() - self.recently_spoken[info]).total_seconds() < delay
+		except KeyError:
+			# if they havent spoken at all, then they also havent spoken recently
+			return False
 
 	async def on_typing(self, channel, user, when):
-		await self._track_spoken((channel.id, user.id), delay=self.time_difference_needed(when, LAST_SPOKEN_CUTOFF))
-
-	async def _track_spoken(self, info, *, delay=LAST_SPOKEN_CUTOFF):
-		"""Keep track of whether the user recently spoke in this channel.
-
-		This is to prevent highlighting someone while they're probably still looking at the channel.
-		"""
-		# Why use a counter, instead of a set?
-		# Suppose we use a set, and the delay is 10 seconds.
-		#
-		# message event 1:
-		# add
-		# sleep 10
-		#
-		# 3s later, message event 2:
-		# add  (no-op, already in set)
-		# sleep 10
-		#
-		# 7s later, switch to m1: (7 + 3 = delay)
-		# remove
-		#
-		# 3s later, m2:
-		# remove  (no-op, not in set)
-		#
-		# In this scenario, the user is considered "not spoken"
-		# 3 seconds early, when m1 is switched back to.
-		# To avoid this, we use a counter which stores how many times the user has recently spoken.
-		# Each increment is paired with a decrement N seconds later,
-		# and the user is considered active until their count in a given channel reaches 0.
-		self.recently_spoken[info] += 1
-		await asyncio.sleep(delay)
-		self.recently_spoken[info] -= 1
+		self.recently_spoken[channel.id, user.id] = when
 
 	def highlights(self, message):
 		return self.HighlightFinder(self.bot, message).highlights()
@@ -165,8 +146,8 @@ class Highlight:
 	@staticmethod
 	def time_difference_needed(time: datetime, max_delay: float):
 		"""return the number of seconds needed to ensure that max_delay seconds have elapsed since time"""
-		diff = (datetime.utcnow() - time).total_seconds()
-		return max(0, diff)
+		diff = max(0, (datetime.utcnow() - time).total_seconds())
+		return max_delay-diff
 
 	@classmethod
 	async def notification_message(cls, user, highlight, message):
@@ -368,15 +349,6 @@ class Highlight:
 			with contextlib.suppress(discord.HTTPException):
 				await message.delete()
 		self.bot.loop.create_task(delete_after())
-
-
-class PositiveCounter(collections.Counter):
-	def __setitem__(self, key, count):
-		if count > 0:
-			return super().__setitem__(key, count)
-
-		with contextlib.suppress(KeyError):
-			del self[key]
 
 def setup(bot):
 	bot.add_cog(Highlight(bot))
