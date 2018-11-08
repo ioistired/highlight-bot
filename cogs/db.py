@@ -182,10 +182,9 @@ class Database:
 			await self.bot.pool.execute(f'DELETE FROM {table} WHERE "user" = $1', user)
 
 	async def cursor(self, query, *args):
-		async with self.bot.pool.acquire() as connection:
-			async with connection.transaction():
-				async for row in connection.cursor(query, *args):
-					yield row
+		async with self.bot.pool.acquire() as connection, connection.transaction():
+			async for row in connection.cursor(query, *args):
+				yield row
 
 def setup(bot):
 	bot.add_cog(Database(bot))
