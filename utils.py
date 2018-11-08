@@ -30,9 +30,9 @@ class LRUDict(collections.OrderedDict):
 
 	def __getitem__(self, key):
 		# move key to the end
-		result = self.pop(key)
+		result = super().__getitem__(key)
+		del self[key]
 		super().__setitem__(key, result)
-
 		return result
 
 	def __setitem__(self, key, value):
