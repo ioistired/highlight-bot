@@ -52,7 +52,7 @@ class Highlight:
 		if not message.guild or not self.bot.should_reply(message):
 			return
 
-		async for highlighted_user, highlight in self.highlights(message):
+		async for highlighted_user, highlight in self.HighlightFinder(self.bot, message):
 			info = message.channel.id, highlighted_user.id
 			if not self.has_recently_spoken(info):
 				# add to the dict first since notify may sleep
@@ -67,14 +67,11 @@ class Highlight:
 		try:
 			return (datetime.utcnow() - self.recently_spoken[info]).total_seconds() < delay
 		except KeyError:
-			# if they havent spoken at all, then they also havent spoken recently
+			# if they haven't spoken at all, then they also haven't spoken recently
 			return False
 
 	async def on_typing(self, channel, user, when):
 		self.recently_spoken[channel.id, user.id] = when
-
-	def highlights(self, message):
-		return self.HighlightFinder(self.bot, message).highlights()
 
 	# we use a class to have shared state which is isolated from the cog
 	# we use a nested class so as to have HighlightUser defined close to where it's used
@@ -87,7 +84,7 @@ class Highlight:
 			self.message = message
 			self.seen_users = set()
 
-		async def highlights(self):
+		async def __aiter__(self):
 			highlight_users = await self.db_cog.channel_highlights(self.message.channel)
 			if not highlight_users:
 				return
