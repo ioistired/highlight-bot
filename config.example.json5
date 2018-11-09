@@ -5,6 +5,8 @@
 	// if you change the code, you MUST publish your changes as well.
 	// so configure this link accordingly.
 	repo: 'https://github.com/bmintz/highlight-bot',
+	// the contents of this file will be displayed to the user when they run the "copyright" command
+	copyright_license_file: 'copyright-notice.txt',
 
 	startup_extensions: [
 		'cogs.db', // goes first because later cogs may depend on it
