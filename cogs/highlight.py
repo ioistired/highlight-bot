@@ -55,6 +55,8 @@ class Highlight:
 		if not message.guild or not self.bot.should_reply(message):
 			return
 
+		self.recently_spoken[message.channel.id, message.author.id] = message.created_at
+
 		async for highlighted_user, highlight in self.HighlightFinder(self.bot, message):
 			info = message.channel.id, highlighted_user.id
 			if not self.has_recently_spoken(info):
@@ -63,8 +65,6 @@ class Highlight:
 				# from notifying the user twice
 				self.recently_spoken[info] = datetime.utcnow()
 				await self.notify(highlighted_user, highlight, message)
-
-		self.recently_spoken[message.channel.id, message.author.id] = message.created_at
 
 	def has_recently_spoken(self, info, *, delay=LAST_SPOKEN_CUTOFF):
 		try:
