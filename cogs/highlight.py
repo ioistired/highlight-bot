@@ -105,7 +105,7 @@ class Highlight:
 
 			regex = self.build_re(set(self.highlight_users.keys()))
 
-			for match in re.finditer(regex, self.message.content):
+			for match in re.finditer(regex, self.message.clean_content):
 				highlight = match[0]
 				async for user in self.users_highlighted_by(highlight):
 					yield user, highlight
