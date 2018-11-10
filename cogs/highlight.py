@@ -308,16 +308,18 @@ class Highlight:
 		await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
 
 	@guild_only_command(name='import')
-	async def import_(self, context, server: int):
+	async def import_(self, context, *, server: utils.Guild):
 		"""Imports your highlight words from another server.
 
 		This is a copy operation, so if you remove a highlight word
 		from the other server later, it is not reflected in the new
 		server.
+
+		You can provide the server either by ID or by name. Names are case-sensitive.
 		"""
 		self.delete_later(context.message)
 		try:
-			await self.db_cog.import_(source_guild=server, target_guild=context.guild.id, user=context.author.id)
+			await self.db_cog.import_(source_guild=server.id, target_guild=context.guild.id, user=context.author.id)
 		except commands.UserInputError:
 			await context.try_add_reaction(utils.SUCCESS_EMOJIS[False])
 			raise

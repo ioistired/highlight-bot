@@ -19,6 +19,9 @@ import asyncio
 import collections
 import functools
 
+import discord.utils
+from discord.ext import commands
+
 SUCCESS_EMOJIS = {False: '❌', True: '✅'}
 
 class LRUDict(collections.OrderedDict):
@@ -64,3 +67,20 @@ def asyncexecutor(*, timeout=None, loop=None, executor=None):
 			return asyncio.wait_for(coro, timeout=timeout, loop=loop)
 		return wrapper
 	return decorator
+
+class Guild(commands.Converter):
+	@staticmethod
+	async def convert(context, argument):
+		try:
+			id = int(argument)
+		except ValueError:
+			pass
+		else:
+			guild = context.bot.get_guild(id)
+			if guild:
+				return guild
+
+		guild = discord.utils.get(context.bot.guilds, name=argument)
+		if guild:
+			return guild
+		raise commands.BadArgument('Server not found.')
