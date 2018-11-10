@@ -134,13 +134,12 @@ class Highlight:
 
 		@staticmethod
 		def build_re(highlights):
-			s  = r'(?i)'  # case insensitive
-			s += r'\b'  # word bound
-			s += r'(?:'  # begin non-capturing group, to make sure that the word bound occurs before/after all words
-			s += r'|'.join(map(re.escape, highlights))
-			s += r')'
-			s += r'\b'
-			return s
+			return r"""
+				(?ix)  # case insensitive, verbose
+				\b  # word bound
+				(?:{})  # non capturing group, to make sure that the word bound occurs before/after all words
+				\b
+			""".format(map(re.escape, highlights))
 
 	@classmethod
 	async def notify(cls, user, highlight, message):
