@@ -67,23 +67,31 @@ class Database:
 		return highlight_users
 
 	async def user_highlights(self, guild, user):
-		query = """
+		# tfw no "fetchvals"
+		return [row['highlight'] async for row in self.cursor("""
 			SELECT highlight
 			FROM highlights
 			WHERE
 				guild = $1
 				AND "user" = $2
-		"""
-		# tfw no "fetchvals"
-		return [row['highlight'] async for row in self.cursor(query, guild, user)]
+		""", guild, user)]
 
 	async def blocks(self, user):
-		query = """
+		return set([row['entity'] async for row in self.cursor("""
 			SELECT entity
 			FROM blocks
 			WHERE "user" = $1
-		"""
-		return set([row['entity'] async for row in self.cursor(query, user)])
+		""", user)])
+
+	def blocked(self, user, entity):
+		"""Return whether user has blocked entity"""
+		return self.bot.pool.fetchval("""
+			SELECT true
+			FROM blocks
+			WHERE
+				"user" = $1
+				AND entity = $2
+		""", user, entity)
 
 	### Actions
 
