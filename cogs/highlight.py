@@ -259,7 +259,7 @@ class Highlight:
 		"""Shows you the users or channels that you have globally blocked."""
 		self.delete_later(context.message)
 
-		entities = map(self.format_entity, await self.db_cog.blocks(context.author.id))
+		entities = list(map(self.format_entity, await self.db_cog.blocks(context.author.id)))
 
 		embed = self.author_embed(context.author)
 		embed.title = 'Blocked'
