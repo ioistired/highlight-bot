@@ -95,6 +95,7 @@ class Highlight:
 			self.bot = bot
 			self.db_cog = self.bot.get_cog('Database')
 			self.message = message
+			self.author_id = self.message.author.id
 			self.seen_users = set()
 
 		async def __aiter__(self):
@@ -127,10 +128,10 @@ class Highlight:
 				return True
 			return False
 
-		async def blocked(self, user):
-			"""return whtether the highlightee is blocked by the highlighter"""
+		def blocked(self, user):
+			"""return whether this user (the highlightee) has blocked the highlighter"""
 			# we only have to check if the *user* is blocked here bc the database filters out blocked channels
-			return user in await self.db_cog.blocks(self.message.author.id)
+			return self.db_cog.blocked(user.id, self.author_id)
 
 		@staticmethod
 		def build_re(highlights):
