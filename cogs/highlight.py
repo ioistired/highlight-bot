@@ -111,11 +111,21 @@ class Highlight:
 			self.highlight_users = highlight_users
 
 			regex = self.build_re(set(self.highlight_users.keys()))
+			content = self.remove_mentions(self.message.content)
 
-			for match in re.finditer(regex, self.message.clean_content):
+			for match in re.finditer(regex, content):
 				highlight = match[0]
 				async for user in self.users_highlighted_by(highlight):
 					yield user, highlight
+
+		@staticmethod
+		def remove_mentions(content):
+			"""remove user @mentions from a message"""
+			# remove user mentions
+			return re.sub(r'<@!?\d+>', '', content, re.ASCII)
+			# don't remove role mentions because conceivably someone would want to be highlighted for a role they cannot join
+			# though it would be easier on the user to replace role mentions with @{role.name},
+			# @weeb should not highlight someone who has "weeb" set up as a mention
 
 		async def users_highlighted_by(self, highlight):
 			for user in self.highlight_users.getall(highlight):
