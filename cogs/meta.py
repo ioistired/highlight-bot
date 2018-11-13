@@ -46,7 +46,7 @@ class Meta:
 		"""Directs you to the support server."""
 		try:
 			await context.author.send('https://discord.gg/' + context.bot.config['support_server_invite_code'])
-		except discord.Forbidden:
+		except discord.HTTPException:
 			await context.try_add_reaction(utils.SUCCESS_EMOJIS[False])
 			await context.send('Unable to send invite in DMs. Please allow DMs from server members.')
 		else:
