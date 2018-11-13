@@ -8,6 +8,8 @@
 	// the contents of this file will be displayed to the user when they run the "copyright" command
 	copyright_license_file: 'copyright-notice.txt',
 
+	support_server_invite_code: '',
+
 	startup_extensions: [
 		'cogs.db', // goes first because later cogs may depend on it
 		'cogs.highlight',

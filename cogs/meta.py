@@ -41,6 +41,17 @@ class Meta:
 		permissions.update(**dict.fromkeys(permission_names, True))
 		await context.send('<%s>' % discord.utils.oauth_url(context.bot.user.id, permissions))
 
+	@commands.command()
+	async def support(self, context):
+		"""Directs you to the support server."""
+		try:
+			await context.author.send('https://discord.gg/' + self.bot.config['support_server_invite_code'])
+		except discord.Forbidden:
+			await context.try_add_reaction(utils.SUCCESS_EMOJIS[False])
+			await context.send('Unable to send invite in DMs. Please allow DMs from server members.')
+		else:
+			await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
+
 	# heavily based on code provided by Rapptz, © 2015 Rapptz
 	# https://github.com/Rapptz/RoboDanny/blob/8919ec0a455f957848ef77b479fe3494e76f0aa7/cogs/meta.py#L162-L190
 	@commands.command()
@@ -113,3 +124,5 @@ class Meta:
 
 def setup(bot):
 	bot.add_cog(Meta())
+	if not bot.config.get('support_server_invite_code'):
+		bot.remove_command('support')
