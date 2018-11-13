@@ -139,7 +139,7 @@ class Highlight:
 				\b  # word bound
 				(?:{})  # non capturing group, to make sure that the word bound occurs before/after all words
 				\b
-			""".format(map(re.escape, highlights))
+			""".format('|'.join(map(re.escape, highlights)))
 
 	@classmethod
 	async def notify(cls, user, highlight, message):
