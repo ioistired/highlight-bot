@@ -19,6 +19,7 @@ import asyncio
 import collections
 import contextlib
 from datetime import datetime
+import functools
 import re
 import typing
 
@@ -28,11 +29,16 @@ from discord.ext import commands
 
 import utils
 
-Entity = typing.Union[discord.Member, discord.TextChannel, discord.CategoryChannel]
+User = typing.Union[discord.Member, discord.User]
+Entity = typing.Union[User, discord.TextChannel, discord.CategoryChannel]
 # how many seconds after a user is active in a channel before they are no longer considered "recently spoken"
 LAST_SPOKEN_CUTOFF = 10
 # how many seconds to wait for new messages after a user has been highlighted
 NEW_MESSAGES_DELAY = 10
+# how many seconds to wait before command messages sent by the user and our replies to them
+DELETE_AFTER = 5
+# how many seconds to wait before deleting long messages, such as lists
+DELETE_LONG_AFTER = 15
 
 def guild_only_command(*args, **kwargs):
 	def wrapper(func):
@@ -212,7 +218,7 @@ class Highlight:
 		embed.description = '\n'.join(highlights)
 		embed.set_footer(text=f'{len(highlights)} triggers')
 
-		await context.send(embed=embed, delete_after=15)
+		await context.send(embed=embed, delete_after=DELETE_LONG_AFTER)
 
 	@guild_only_command(usage='<word or phrase>')
 	async def add(self, context, *, highlight):
@@ -251,14 +257,16 @@ class Highlight:
 	@commands.command(aliases=['blocks'])
 	async def blocked(self, context):
 		"""Shows you the users or channels that you have globally blocked."""
-		entities = tuple(map(self.format_entity, await self.db_cog.blocks(context.author.id)))
+		self.delete_later(context.message)
+
+		entities = map(self.format_entity, await self.db_cog.blocks(context.author.id))
 
 		embed = self.author_embed(context.author)
 		embed.title = 'Blocked'
 		embed.description='\n'.join(entities)
 		embed.set_footer(text=f'{len(entities)} entities blocked')
 
-		await context.send(embed=embed)
+		await context.send(embed=embed, delete_after=DELETE_LONG_AFTER)
 
 	def format_entity(self, entity):
 		channel = self.bot.get_channel(entity)
@@ -299,6 +307,16 @@ class Highlight:
 		self.delete_later(context.message)
 		await self.db_cog.unblock(context.author.id, entity.id)
 		await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
+
+	@commands.command(name='blocked-by', aliases=['blocked-by?'])
+	async def blocked_by(self, context, *, user: User):
+		"""Tells you if a given user has blocked you."""
+		self.delete_later(context.message)
+		clean = functools.partial(commands.clean_content().convert, context)
+		if await self.db_cog.blocked(user.id, context.author.id):
+			await context.send(await clean(f'Yes, {user.mention} has blocked you.'), delete_after=DELETE_AFTER)
+		else:
+			await context.send(await clean(f'No, {user.mention} has not blocked you.'), delete_after=DELETE_AFTER)
 
 	@guild_only_command()
 	async def clear(self, context):
@@ -363,7 +381,7 @@ class Highlight:
 		else:
 			return True
 
-	def delete_later(self, message, delay=5):
+	def delete_later(self, message, delay=DELETE_AFTER):
 		async def delete_after():
 			await asyncio.sleep(delay)
 			with contextlib.suppress(discord.HTTPException):
