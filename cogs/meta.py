@@ -50,7 +50,7 @@ class Meta:
 			await context.try_add_reaction(utils.SUCCESS_EMOJIS[False])
 			await context.send('Unable to send invite in DMs. Please allow DMs from server members.')
 		else:
-			await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
+			await context.try_add_reaction('📬')
 
 	# heavily based on code provided by Rapptz, © 2015 Rapptz
 	# https://github.com/Rapptz/RoboDanny/blob/8919ec0a455f957848ef77b479fe3494e76f0aa7/cogs/meta.py#L162-L190
