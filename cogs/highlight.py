@@ -83,7 +83,13 @@ class Highlight:
 		self.track_spoken(channel.guild and channel.guild.id, channel.id, user.id, when)
 
 	async def on_raw_reaction(self, payload):
-		self.track_spoken(payload.guild_id, payload.channel_id, payload.user_id, datetime.utcnow())
+		# assume that a user reacting to a message sent an hour ago, has seen the channel an hour ago
+		# but track it in case the user reacts to a message sent 3 seconds ago
+		# in practice this technique is not ideal, because: if the user sees a message created 3 hours ago,
+		# but that message is the most recent message in a given channel, they should not be highlighted either
+		# but it's expensive to determine whether this message is the last message.
+		message_creation = discord.utils.snowflake_time(payload.message_id)
+		self.track_spoken(payload.guild_id, payload.channel_id, payload.user_id, message_creation)
 
 	def track_spoken(self, guild_id, channel_id, user_id, time):
 		if not guild_id:
