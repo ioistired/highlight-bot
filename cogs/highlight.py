@@ -377,11 +377,10 @@ class Highlight:
 	async def confirm(self, context, prompt, required_phrase, *, timeout=30):
 		await context.send(prompt)
 
-		def check(message):
-			return (
-				message.author == context.author
-				and message.channel == context.channel
-				and message.content == required_phrase)
+		check = lambda message: (
+			    message.author == context.author
+			and message.channel == context.channel
+			and message.content == required_phrase)
 
 		try:
 			await self.bot.wait_for('message', check=check, timeout=timeout)
