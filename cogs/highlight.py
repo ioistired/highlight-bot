@@ -383,13 +383,13 @@ class Highlight:
 	async def confirm(self, context, prompt, required_phrase, *, timeout=30):
 		await context.send(prompt)
 
-		check = lambda message: (
-			    message.author == context.author
+		def is_confirmation(message): return (
+			message.author == context.author
 			and message.channel == context.channel
 			and message.content == required_phrase)
 
 		try:
-			await self.bot.wait_for('message', check=check, timeout=timeout)
+			await self.bot.wait_for('message', check=is_confirmation, timeout=timeout)
 		except asyncio.TimeoutError:
 			await context.send('Confirmation phrase not received in time. Please try again.')
 			return False
