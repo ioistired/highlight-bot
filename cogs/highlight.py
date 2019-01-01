@@ -58,7 +58,7 @@ class Highlight:
 	### Events
 
 	async def on_message(self, message):
-		if not message.guild: # or not self.bot.should_reply(message):
+		if not message.guild or not self.bot.should_reply(message):
 			return
 
 		self.recently_spoken[message.channel.id, message.author.id] = message.created_at
