@@ -58,7 +58,7 @@ class Highlight:
 	### Events
 
 	async def on_message(self, message):
-		if not message.guild or not self.bot.should_reply(message):
+		if not message.guild: # or not self.bot.should_reply(message):
 			return
 
 		self.recently_spoken[message.channel.id, message.author.id] = message.created_at
@@ -145,9 +145,13 @@ class Highlight:
 			if await self.blocked(user):
 				return False
 
+			if user in self.message.mentions:
+				return False
+
 			if user not in self.seen_users and user != self.message.author:
 				self.seen_users.add(user)
 				return True
+
 			return False
 
 		def blocked(self, user):
