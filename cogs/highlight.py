@@ -341,7 +341,7 @@ class Highlight:
 		await self.db.unblock(context.author.id, entity.id)
 		await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
 
-	@commands.command(name='blocked-by', aliases=['blocked-by?'])
+	@commands.command(name='blocked-by', aliases=['blocked-by?', 'blocked?'])
 	async def blocked_by(self, context, *, user: User):
 		"""Tells you if a given user has blocked you."""
 		self.delete_later(context.message)
