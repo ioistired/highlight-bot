@@ -73,6 +73,12 @@ class Highlight:
 				self.recently_spoken[info] = datetime.utcnow()
 				await self.notify(highlighted_user, highlight, message)
 
+	async def on_member_remove(self, member):
+		await self.db.clear(member.guild.id, member.id)
+
+	async def on_guild_leave(self, guild):
+		await self.db.clear_guild(guild.id)
+
 	def has_recently_spoken(self, info, *, delay=LAST_SPOKEN_CUTOFF):
 		try:
 			return (datetime.utcnow() - self.recently_spoken[info]).total_seconds() < delay

@@ -37,14 +37,6 @@ class DatabaseInterface:
 	def __init__(self, bot):
 		self.pool = bot.pool
 
-	### Events
-
-	async def on_guild_leave(self, guild):
-		await self.bot.pool.execute('DELETE FROM highlights WHERE guild = $1', guild.id)
-
-	async def on_member_leave(self, member):
-		await self.clear(member.guild.id, member.id)
-
 	### Queries
 
 	async def channel_highlights(self, channel):
