@@ -149,12 +149,21 @@ class Highlight:
 
 		async def should_notify_user(self, user, highlight):
 			"""assuming that highlight was found in the message, return whether to notify the user"""
+			if not self.message.guild.get_member(user.id):
+				# the user appears to have left the guild
+				return False
+
+			if user == self.message.author:
+				# users may not highlight themselves
+				return False
+
 			if await self.blocked(user):
 				return False
 
-			if user not in self.seen_users and user != self.message.author:
+			if user not in self.seen_users:
 				self.seen_users.add(user)
 				return True
+
 			return False
 
 		def blocked(self, user):
