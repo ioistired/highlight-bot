@@ -11,7 +11,6 @@
 	support_server_invite_code: '',
 
 	startup_extensions: [
-		'cogs.db', // goes first because later cogs may depend on it
 		'cogs.highlight',
 		'cogs.meta',
 		'ben_cogs.misc',

@@ -27,6 +27,7 @@ import autoslot
 import discord
 from discord.ext import commands
 
+from cogs.db import DatabaseInterface
 import utils
 
 User = typing.Union[discord.Member, discord.User]
@@ -49,7 +50,7 @@ def guild_only_command(*args, **kwargs):
 class Highlight:
 	def __init__(self, bot):
 		self.bot = bot
-		self.db_cog = self.bot.get_cog('Database')
+		self.db = DatabaseInterface(self.bot)
 		self.recently_spoken = utils.LRUDict(size=1_000)
 
 		for event in 'on_raw_reaction_add', 'on_raw_reaction_remove':
@@ -63,7 +64,7 @@ class Highlight:
 
 		self.recently_spoken[message.channel.id, message.author.id] = message.created_at
 
-		async for highlighted_user, highlight in self.HighlightFinder(self.bot, message):
+		async for highlighted_user, highlight in self.HighlightFinder(bot=self.bot, message=message, db=self.db):
 			info = message.channel.id, highlighted_user.id
 			if not self.has_recently_spoken(info):
 				# add to the dict first since notify may sleep
@@ -103,15 +104,15 @@ class Highlight:
 	class HighlightFinder(metaclass=autoslot.SlotsMeta):
 		__slots__ = {'highlight_users'}
 
-		def __init__(self, bot, message):
+		def __init__(self, *, bot, message, db):
 			self.bot = bot
-			self.db_cog = self.bot.get_cog('Database')
+			self.db = db
 			self.message = message
 			self.author_id = self.message.author.id
 			self.seen_users = set()
 
 		async def __aiter__(self):
-			highlight_users = await self.db_cog.channel_highlights(self.message.channel)
+			highlight_users = await self.db.channel_highlights(self.message.channel)
 			if not highlight_users:
 				return
 			self.highlight_users = highlight_users
@@ -153,7 +154,7 @@ class Highlight:
 		def blocked(self, user):
 			"""return whether this user (the highlightee) has blocked the highlighter"""
 			# we only have to check if the *user* is blocked here bc the database filters out blocked channels
-			return self.db_cog.blocked(user.id, self.author_id)
+			return self.db.blocked(user.id, self.author_id)
 
 		@staticmethod
 		def build_re(highlights):
@@ -225,7 +226,7 @@ class Highlight:
 		"""Shows all your highlights words or phrases."""
 		self.delete_later(context.message)
 
-		highlights = await self.db_cog.user_highlights(context.guild.id, context.author.id)
+		highlights = await self.db.user_highlights(context.guild.id, context.author.id)
 		if not highlights:
 			return await context.send('You do not have any highlight words or phrases set up.')
 
@@ -252,7 +253,7 @@ class Highlight:
 		"""
 		self.delete_later(context.message)
 		try:
-			await self.db_cog.add(context.guild.id, context.author.id, highlight)
+			await self.db.add(context.guild.id, context.author.id, highlight)
 		except commands.UserInputError:
 			await context.try_add_reaction(utils.SUCCESS_EMOJIS[False])
 			raise
@@ -267,7 +268,7 @@ class Highlight:
 		so coffee, Coffee, and COFFEE will all notify you.
 		"""
 		self.delete_later(context.message)
-		await self.db_cog.remove(context.guild.id, context.author.id, highlight)
+		await self.db.remove(context.guild.id, context.author.id, highlight)
 		await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
 
 	@commands.command(aliases=['blocks'])
@@ -275,7 +276,7 @@ class Highlight:
 		"""Shows you the users or channels that you have globally blocked."""
 		self.delete_later(context.message)
 
-		entities = list(map(self.format_entity, await self.db_cog.blocks(context.author.id)))
+		entities = list(map(self.format_entity, await self.db.blocks(context.author.id)))
 
 		embed = self.author_embed(context.author)
 		embed.title = 'Blocked'
@@ -311,7 +312,7 @@ class Highlight:
 		which blocks them globally. This is not a per-server block.
 		"""
 		self.delete_later(context.message)
-		await self.db_cog.block(context.author.id, entity.id)
+		await self.db.block(context.author.id, entity.id)
 		await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
 
 	@guild_only_command()
@@ -321,7 +322,7 @@ class Highlight:
 		This reverts a previous block action.
 		"""
 		self.delete_later(context.message)
-		await self.db_cog.unblock(context.author.id, entity.id)
+		await self.db.unblock(context.author.id, entity.id)
 		await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
 
 	@commands.command(name='blocked-by', aliases=['blocked-by?'])
@@ -329,7 +330,7 @@ class Highlight:
 		"""Tells you if a given user has blocked you."""
 		self.delete_later(context.message)
 		clean = functools.partial(commands.clean_content().convert, context)
-		if await self.db_cog.blocked(user.id, context.author.id):
+		if await self.db.blocked(user.id, context.author.id):
 			await context.send(await clean(f'Yes, {user.mention} has blocked you.'), delete_after=DELETE_AFTER)
 		else:
 			await context.send(await clean(f'No, {user.mention} has not blocked you.'), delete_after=DELETE_AFTER)
@@ -338,7 +339,7 @@ class Highlight:
 	async def clear(self, context):
 		"""Removes all your highlight words or phrases."""
 		self.delete_later(context.message)
-		await self.db_cog.clear(context.guild.id, context.author.id)
+		await self.db.clear(context.guild.id, context.author.id)
 		await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
 
 	@guild_only_command(name='import')
@@ -353,7 +354,7 @@ class Highlight:
 		"""
 		self.delete_later(context.message)
 		try:
-			await self.db_cog.import_(source_guild=server.id, target_guild=context.guild.id, user=context.author.id)
+			await self.db.import_(source_guild=server.id, target_guild=context.guild.id, user=context.author.id)
 		except commands.UserInputError:
 			await context.try_add_reaction(utils.SUCCESS_EMOJIS[False])
 			raise
@@ -377,7 +378,7 @@ class Highlight:
 		if not await self.confirm(context, prompt, confirmation_phrase):
 			return
 
-		await self.db_cog.delete_account(context.author.id)
+		await self.db.delete_account(context.author.id)
 		await context.send(f"{context.author.mention} I've deleted your account successfully.")
 
 	async def confirm(self, context, prompt, required_phrase, *, timeout=30):

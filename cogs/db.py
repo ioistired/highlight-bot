@@ -33,9 +33,9 @@ class TooManyHighlights(HighlightError):
 class InvalidHighlightLength(HighlightError):
 	pass
 
-class Database:
+class DatabaseInterface:
 	def __init__(self, bot):
-		self.bot = bot
+		self.pool = bot.pool
 
 	### Events
 
@@ -85,7 +85,7 @@ class Database:
 
 	def blocked(self, user, entity):
 		"""Return whether user has blocked entity"""
-		return self.bot.pool.fetchval("""
+		return self.pool.fetchval("""
 			SELECT true
 			FROM blocks
 			WHERE
@@ -98,7 +98,7 @@ class Database:
 	async def add(self, guild, user, highlight):
 		await self._add_highlight_check(guild, user, highlight)
 
-		await self.bot.pool.execute("""
+		await self.pool.execute("""
 			INSERT INTO highlights(guild, "user", highlight)
 			VALUES ($1, $2, $3)
 			ON CONFLICT DO NOTHING
@@ -117,7 +117,7 @@ class Database:
 			raise TooManyHighlights('You have too many highlight words or phrases.')
 
 	async def remove(self, guild, user, highlight):
-		await self.bot.pool.execute("""
+		await self.pool.execute("""
 			DELETE FROM highlights
 			WHERE
 				guild = $1
@@ -126,17 +126,23 @@ class Database:
 		""", guild, user, highlight)
 
 	async def clear(self, guild, user):
-		await self.bot.pool.execute("""
+		await self.pool.execute("""
 			DELETE FROM highlights
 			WHERE
 				guild = $1
 				AND "user" = $2
 		""", guild, user)
 
+	async def clear_guild(self, guild):
+		await self.pool.execute("""
+			DELETE FROM highlights
+			WHERE guild = $1
+		""", guild)
+
 	async def import_(self, source_guild, target_guild, user):
 		await self._import_highlights_check(source_guild, target_guild, user)
 
-		await self.bot.pool.execute("""
+		await self.pool.execute("""
 			INSERT INTO highlights (guild, "user", highlight)
 			SELECT $2, "user", highlight
 			FROM highlights
@@ -162,7 +168,7 @@ class Database:
 			raise TooManyHighlights('Import would place you over the maximum number of highlight words.')
 
 	def highlight_count(self, guild, user):
-		return self.bot.pool.fetchval("""
+		return self.pool.fetchval("""
 			SELECT COUNT(*)
 			FROM highlights
 			WHERE
@@ -171,14 +177,14 @@ class Database:
 		""", guild, user)
 
 	async def block(self, user, entity: int):
-		await self.bot.pool.execute("""
+		await self.pool.execute("""
 			INSERT INTO blocks ("user", entity)
 			VALUES ($1, $2)
 			ON CONFLICT DO NOTHING
 		""", user, entity)
 
 	async def unblock(self, user, entity: int):
-		await self.bot.pool.execute("""
+		await self.pool.execute("""
 			DELETE FROM blocks
 			WHERE
 				"user" = $1
@@ -187,12 +193,9 @@ class Database:
 
 	async def delete_account(self, user):
 		for table in 'highlights', 'blocks':
-			await self.bot.pool.execute(f'DELETE FROM {table} WHERE "user" = $1', user)
+			await self.pool.execute(f'DELETE FROM {table} WHERE "user" = $1', user)
 
 	async def cursor(self, query, *args):
-		async with self.bot.pool.acquire() as connection, connection.transaction():
+		async with self.pool.acquire() as connection, connection.transaction():
 			async for row in connection.cursor(query, *args):
 				yield row
-
-def setup(bot):
-	bot.add_cog(Database(bot))
