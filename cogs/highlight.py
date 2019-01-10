@@ -220,8 +220,8 @@ class Highlight:
 
 	### Commands
 
-	@guild_only_command(aliases=['list'])
-	async def show(self, context):
+	@guild_only_command(aliases=['show', 'ls'])
+	async def list(self, context):
 		"""Shows all your highlights words or phrases."""
 		self.delete_later(context.message)
 
@@ -259,7 +259,7 @@ class Highlight:
 		else:
 			await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
 
-	@guild_only_command(usage='<word or phrase>')
+	@guild_only_command(usage='<word or phrase>', aliases=['delete', 'del', 'rm'])
 	async def remove(self, context, *, highlight):
 		"""Removes a previously registered highlight word or phrase.
 
@@ -289,7 +289,7 @@ class Highlight:
 		if channel:
 			if isinstance(channel, discord.CategoryChannel):
 				return f'📂 {channel.name}'
-			return f'🗨️ {channel.mention}'
+			return f'🗨️  {channel.mention}'
 
 		user = self.bot.get_user(entity)
 		if user:
@@ -299,9 +299,9 @@ class Highlight:
 
 	@staticmethod
 	def author_embed(author):
-		embed = discord.Embed()
-		embed.set_author(name=author.name, icon_url=author.avatar_url_as(format='png', size=64))
-		return embed
+		return discord.Embed().set_author(
+			name=str(author),
+			icon_url=author.avatar_url_as(format='png', size=64))
 
 	@guild_only_command()
 	async def block(self, context, *, entity: Entity):
@@ -383,11 +383,10 @@ class Highlight:
 	async def confirm(self, context, prompt, required_phrase, *, timeout=30):
 		await context.send(prompt)
 
-		def check(message):
-			return (
-				message.author == context.author
-				and message.channel == context.channel
-				and message.content == required_phrase)
+		def check(message): return (
+			message.author == context.author
+			and message.channel == context.channel
+			and message.content == required_phrase)
 
 		try:
 			await self.bot.wait_for('message', check=check, timeout=timeout)
