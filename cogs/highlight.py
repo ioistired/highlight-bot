@@ -243,7 +243,8 @@ class Highlight:
 
 		highlights = await self.db.user_highlights(context.guild.id, context.author.id)
 		if not highlights:
-			return await context.send('You do not have any highlight words or phrases set up.')
+			await context.send('You do not have any highlight words or phrases set up.', delete_after=DELETE_AFTER)
+			return
 
 		embed = self.author_embed(context.author)
 		embed.title = 'Triggers'
