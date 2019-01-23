@@ -124,6 +124,13 @@ class Highlight:
 				async for user in self.users_highlighted_by(highlight):
 					yield user, highlight
 
+		async def users_highlighted_by(self, highlight):
+			for user in self.highlight_users.getall(highlight):
+				user = self.bot.get_user(user) or await self.bot.get_user_info(user)
+
+				if await self.should_notify_user(user, highlight):
+					yield user
+
 		@staticmethod
 		def remove_mentions(content):
 			"""remove user @mentions from a message"""
@@ -132,13 +139,6 @@ class Highlight:
 			# don't remove role mentions because conceivably someone would want to be highlighted for a role they cannot join
 			# though it would be easier on the user to replace role mentions with @{role.name},
 			# @weeb should not highlight someone who has "weeb" set up as a mention
-
-		async def users_highlighted_by(self, highlight):
-			for user in self.highlight_users.getall(highlight):
-				user = self.bot.get_user(user) or await self.bot.get_user_info(user)
-
-				if await self.should_notify_user(user, highlight):
-					yield user
 
 		async def should_notify_user(self, user, highlight):
 			"""assuming that highlight was found in the message, return whether to notify the user"""
