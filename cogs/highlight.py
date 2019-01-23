@@ -173,12 +173,12 @@ class Highlight:
 
 		@staticmethod
 		def build_re(highlights):
-			return r"""
-				(?ix)  # case insensitive, verbose
-				\b  # word bound
-				(?:{})  # non capturing group, to make sure that the word bound occurs before/after all words
-				\b
-			""".format('|'.join(map(re.escape, highlights)))
+			return (
+				r'(?i)'  # case insensitive
+				r'\b'  # word bound
+				r'(?:{})'  # non capturing group, to make sure that the word bound occurs before/after all words
+				r'\b'
+			).format('|'.join(map(re.escape, highlights)))
 
 	async def notify(self, user, highlight, message):
 		# allow new messages to come in so the user gets some more context
@@ -197,7 +197,7 @@ class Highlight:
 	def time_difference_needed(time: datetime, max_delay: float):
 		"""return the number of seconds needed to ensure that max_delay seconds have elapsed since time"""
 		diff = max(0, (datetime.utcnow() - time).total_seconds())
-		return max_delay-diff
+		return max_delay - diff
 
 	@classmethod
 	async def notification_message(cls, user, highlight, message):
