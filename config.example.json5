@@ -11,13 +11,12 @@
 	support_server_invite_code: '',
 
 	startup_extensions: [
-		'cogs.db', // goes first because later cogs may depend on it
 		'cogs.highlight',
 		'cogs.meta',
 		'ben_cogs.misc',
 		'ben_cogs.debug',
 		'ben_cogs.stats',
-		'ben_cogs.ie_jishaku'],
+		'jishaku'],
 
 	ignore_bots: {
 		default: true,  // whether to generally ignore bots
