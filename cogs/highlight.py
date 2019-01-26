@@ -180,16 +180,12 @@ class Highlight:
 				r'\b'
 			).format('|'.join(map(re.escape, highlights)))
 
-	async def notify(self, user, highlight, message):
+	@classmethod
+	async def notify(cls, user, highlight, message):
 		# allow new messages to come in so the user gets some more context
-		await asyncio.sleep(self.time_difference_needed(message.created_at, NEW_MESSAGES_DELAY))
+		await asyncio.sleep(cls.time_difference_needed(message.created_at, NEW_MESSAGES_DELAY))
 
-		if self.has_recently_spoken((message.channel.id, user.id)):
-			# looks like they spoke soon after being highlighted
-			# so there's no need to notify them anymore
-			return
-
-		message = await self.notification_message(user, highlight, message)
+		message = await cls.notification_message(user, highlight, message)
 		with contextlib.suppress(discord.HTTPException):
 			await user.send(**message)
 
