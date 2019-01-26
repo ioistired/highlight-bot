@@ -32,8 +32,8 @@ import utils
 
 User = typing.Union[discord.Member, discord.User]
 Entity = typing.Union[User, discord.TextChannel, discord.CategoryChannel]
-# how many seconds after a user is active in a channel before they are no longer considered "recently spoken"
-LAST_SPOKEN_CUTOFF = 10
+# how many seconds after a user is active in a channel before they are no longer considered active in that channel
+INACTIVITY_CUTOFF = 10
 # how many seconds to wait for new messages after a user has been highlighted
 NEW_MESSAGES_DELAY = 10
 # how many seconds to wait before command messages sent by the user and our replies to them
@@ -51,7 +51,7 @@ class Highlight:
 	def __init__(self, bot):
 		self.bot = bot
 		self.db = DatabaseInterface(self.bot)
-		self.recently_spoken = utils.LRUDict(size=1_000)
+		self.recently_active = utils.LRUDict(size=1_000)
 
 		for event in 'on_raw_reaction_add', 'on_raw_reaction_remove':
 			self.bot.add_listener(self.on_raw_reaction, event)
@@ -66,21 +66,21 @@ class Highlight:
 
 		async for highlighted_user, highlight in self.HighlightFinder(bot=self.bot, message=message, db=self.db):
 			info = message.channel.id, highlighted_user.id
-			if not self.has_recently_spoken(info):
+			if not self.was_recently_active(info):
 				# add to the dict first to prevent other message events from notifying as well
 				# this is to prevent two messages sent in immediate succession
 				# from notifying the user twice
-				self.recently_spoken[info] = datetime.utcnow()
+				self.recently_active[info] = datetime.utcnow()
 
 				await self.notify_if_user_is_inactive(highlighted_user, highlight, message)
 
 	def track_user_activity(self, channel_id, user_id, when):
-		if (datetime.utcnow() - when).total_seconds() < LAST_SPOKEN_CUTOFF:
+		if (datetime.utcnow() - when).total_seconds() < INACTIVITY_CUTOFF:
 			self.bot.dispatch('user_activity', channel_id, user_id, when)
 
 	async def on_user_activity(self, channel_id, user_id, when):
 		"""dispatched whenever a user does something that would cause them to see recent messages in channel_id"""
-		self.recently_spoken[channel_id, user_id] = when
+		self.recently_active[channel_id, user_id] = when
 
 	async def notify_if_user_is_inactive(self, highlighted_user, highlight, message):
 		# allow new messages to come in so the user gets some more context
@@ -102,9 +102,9 @@ class Highlight:
 	async def on_guild_leave(self, guild):
 		await self.db.clear_guild(guild.id)
 
-	def has_recently_spoken(self, info, *, delay=LAST_SPOKEN_CUTOFF):
+	def was_recently_active(self, info, *, delay=INACTIVITY_CUTOFF):
 		try:
-			return (datetime.utcnow() - self.recently_spoken[info]).total_seconds() < delay
+			return (datetime.utcnow() - self.recently_active[info]).total_seconds() < delay
 		except KeyError:
 			# if they haven't spoken at all, then they also haven't spoken recently
 			return False
