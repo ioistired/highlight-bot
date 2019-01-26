@@ -62,16 +62,39 @@ class Highlight:
 		if not message.guild or not self.bot.should_reply(message):
 			return
 
-		self.recently_spoken[message.channel.id, message.author.id] = message.created_at
+		self.track_user_activity(message.channel.id, message.author.id, message.created_at)
 
 		async for highlighted_user, highlight in self.HighlightFinder(bot=self.bot, message=message, db=self.db):
 			info = message.channel.id, highlighted_user.id
 			if not self.has_recently_spoken(info):
-				# add to the dict first since notify may sleep
+				# add to the dict first to prevent other message events from notifying as well
 				# this is to prevent two messages sent in immediate succession
 				# from notifying the user twice
 				self.recently_spoken[info] = datetime.utcnow()
-				await self.notify(highlighted_user, highlight, message)
+
+				await self.notify_if_user_is_inactive(highlighted_user, highlight, message)
+
+	def track_user_activity(self, channel_id, user_id, when):
+		if (datetime.utcnow() - when).total_seconds() < LAST_SPOKEN_CUTOFF:
+			self.bot.dispatch('user_activity', channel_id, user_id, when)
+
+	async def on_user_activity(self, channel_id, user_id, when):
+		"""dispatched whenever a user does something that would cause them to see recent messages in channel_id"""
+		self.recently_spoken[channel_id, user_id] = when
+
+	async def notify_if_user_is_inactive(self, highlighted_user, highlight, message):
+		# allow new messages to come in so the user gets some more context
+		time_needed = self.time_difference_needed(message.created_at, NEW_MESSAGES_DELAY)
+
+		try:
+			await self.bot.wait_for('user_activity',
+				check=lambda channel_id, user_id, when:
+					channel_id == message.channel.id
+					and user_id == highlighted_user.id,
+				timeout=time_needed)
+		except asyncio.TimeoutError:
+			# no activity received in time
+			await self.notify(highlighted_user, highlight, message)
 
 	async def on_member_remove(self, member):
 		await self.db.clear(member.guild.id, member.id)
@@ -87,7 +110,7 @@ class Highlight:
 			return False
 
 	async def on_typing(self, channel, user, when):
-		self.track_spoken(channel.guild and channel.guild.id, channel.id, user.id, when)
+		self.track_user_activity(channel.id, user.id, when)
 
 	async def on_raw_reaction(self, payload):
 		# assume that a user reacting to a message sent an hour ago, has seen the channel an hour ago
@@ -96,14 +119,7 @@ class Highlight:
 		# but that message is the most recent message in a given channel, they should not be highlighted either
 		# but it's expensive to determine whether this message is the last message.
 		message_creation = discord.utils.snowflake_time(payload.message_id)
-		self.track_spoken(payload.guild_id, payload.channel_id, payload.user_id, message_creation)
-
-	def track_spoken(self, guild_id, channel_id, user_id, time):
-		if not guild_id:
-			return
-
-		if (datetime.utcnow() - time).total_seconds() < LAST_SPOKEN_CUTOFF:
-			self.recently_spoken[channel_id, user_id] = time
+		self.track_user_activity(payload.channel_id, payload.user_id, message_creation)
 
 	# we use a class to have shared state which is isolated from the cog
 	# we use a nested class so as to have HighlightUser defined close to where it's used
@@ -182,9 +198,6 @@ class Highlight:
 
 	@classmethod
 	async def notify(cls, user, highlight, message):
-		# allow new messages to come in so the user gets some more context
-		await asyncio.sleep(cls.time_difference_needed(message.created_at, NEW_MESSAGES_DELAY))
-
 		message = await cls.notification_message(user, highlight, message)
 		with contextlib.suppress(discord.HTTPException):
 			await user.send(**message)
