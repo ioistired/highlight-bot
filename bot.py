@@ -52,7 +52,8 @@ class HighlightBot(commands.AutoShardedBot):
 
 		super().__init__(
 			command_prefix=self.get_prefix_,
-			description='DMs you when certain words are said in chat.')
+			description='DMs you when certain words are said in chat.',
+			formatter=utils.HelpFormatter())
 
 		self.default_help_command = self.remove_command('help')
 		self.add_command(self.help_command)

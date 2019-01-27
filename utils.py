@@ -9,20 +9,106 @@
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	See the
 # GNU Affero General Public License for more details.
 #
 # You should have received a copy of the GNU Affero General Public License
-# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+# along with this program.	If not, see <https://www.gnu.org/licenses/>.
 
 import asyncio
 import collections
+import inspect
 import functools
 
 import discord.utils
 from discord.ext import commands
 
 SUCCESS_EMOJIS = {False: '❌', True: '✅'}
+
+class HelpFormatter(commands.HelpFormatter):
+	def get_command_signature(self):
+		return '`' + super().get_command_signature() + '`'
+
+	def get_ending_note(self):
+		command_name = self.context.invoked_with
+		return (
+			"Type `{0}{1}` command for more info on a command.\n"
+			"You can also type `{0}{1}` category for more info on a category.".format(self.clean_prefix, command_name))
+
+	def _add_subcommands_to_page(self, max_width, commands):
+		for name, command in commands:
+			if name in command.aliases:
+				# skip aliases
+				continue
+
+			self._paginator.add_line(f'**{name}**')
+			self._paginator.add_line(command.short_doc)
+
+	async def format(self):
+		"""Handles the actual behaviour involved with formatting.
+
+		Returns
+		--------
+		list
+			A paginated output of the help command.
+		"""
+		# XXX UnboundedLocalError if we don't do this??
+		# but if i do discord.ext.commands without `global commands` it works???
+		global commands
+		self._paginator = commands.Paginator(prefix='', suffix='')
+
+		description = (
+			self.command.description and f'*{self.command.description}*'
+			if not self.is_cog()
+			else inspect.getdoc(self.command))
+
+		if description:
+			# <description> portion
+			self._paginator.add_line(description, empty=True)
+
+		if isinstance(self.command, commands.Command):
+			# <signature portion>
+			signature = self.get_command_signature()
+			self._paginator.add_line(signature, empty=True)
+
+			# <long doc> section
+			if self.command.help:
+				self._paginator.add_line(self.command.help, empty=True)
+
+			# end it here if it's just a regular command
+			if not self.has_subcommands():
+				self._paginator.close_page()
+				return self._paginator.pages
+
+		max_width = self.max_name_size
+
+		def category(tup):
+			cog = tup[1].cog_name
+			# we insert the zero width space there to give it approximate
+			# last place sorting position.
+			return f'**{cog}:**' if cog is not None else '\u200b**No Category:**'
+
+		filtered = await self.filter_command_list()
+		if self.is_bot():
+			data = sorted(filtered, key=category)
+			for category, commands in itertools.groupby(data, key=category):
+				# there simply is no prettier way of doing this.
+				commands = sorted(commands)
+				if len(commands) > 0:
+					self._paginator.add_line(category)
+
+				self._add_subcommands_to_page(max_width, commands)
+		else:
+			filtered = sorted(filtered)
+			if filtered:
+				self._paginator.add_line('Commands:')
+				self._add_subcommands_to_page(max_width, filtered)
+
+		# add the ending note
+		self._paginator.add_line()
+		ending_note = self.get_ending_note()
+		self._paginator.add_line(ending_note)
+		return self._paginator.pages
 
 class LRUDict(collections.OrderedDict):
 	"""a dictionary with fixed size, sorted by last use"""
