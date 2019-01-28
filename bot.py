@@ -28,6 +28,7 @@ import asyncpg
 import discord
 from discord.ext import commands
 import json5
+import simple_help_formatter
 
 import utils
 from cogs.db import HighlightError
@@ -53,7 +54,7 @@ class HighlightBot(commands.AutoShardedBot):
 		super().__init__(
 			command_prefix=self.get_prefix_,
 			description='DMs you when certain words are said in chat.',
-			formatter=utils.HelpFormatter())
+			formatter=simple_help_formatter.HelpFormatter())
 
 		self.default_help_command = self.remove_command('help')
 		self.add_command(self.help_command)

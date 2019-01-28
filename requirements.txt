@@ -1,5 +1,6 @@
 asyncpg
 autoslot
 ben_cogs
-git+https://github.com/Rapptz/discord.py@rewrite#egg=discord.py
+discord.py @ git+https://github.com/Rapptz/discord.py@rewrite
+simple_help_formatter @ git+https://github.com/bmintz/simple-dpy-help-formatter
 json5
