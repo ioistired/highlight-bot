@@ -176,6 +176,10 @@ class Highlight:
 			if await self.blocked(user):
 				return False
 
+			if user in self.message.mentions:
+				# pinging someone should not also highlight them
+				return False
+
 			if user not in self.seen_users:
 				self.seen_users.add(user)
 				return True
