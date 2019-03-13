@@ -47,17 +47,15 @@ def guild_only_command(*args, **kwargs):
 		return commands.guild_only()(commands.command(*args, **kwargs)(func))
 	return wrapper
 
-class Highlight:
+class Highlight(commands.Cog):
 	def __init__(self, bot):
 		self.bot = bot
 		self.db = DatabaseInterface(self.bot)
 		self.recently_active = utils.LRUDict(size=1_000)
 
-		for event in 'on_raw_reaction_add', 'on_raw_reaction_remove':
-			self.bot.add_listener(self.on_raw_reaction, event)
-
 	### Events
 
+	@commands.Cog.listener()
 	async def on_message(self, message):
 		if not message.guild or not self.bot.should_reply(message):
 			return
@@ -112,6 +110,8 @@ class Highlight:
 	async def on_typing(self, channel, user, when):
 		self.track_user_activity(channel.id, user.id, when)
 
+	@commands.Cog.listener(name='on_raw_reaction_add')
+	@commands.Cog.listener(name='on_raw_reaction_remove')
 	async def on_raw_reaction(self, payload):
 		# assume that a user reacting to a message sent an hour ago, has seen the channel an hour ago
 		# but track it in case the user reacts to a message sent 3 seconds ago

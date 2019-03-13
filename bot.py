@@ -43,6 +43,13 @@ class CustomContext(commands.Context):
 		with contextlib.suppress(discord.HTTPException):
 			await self.message.add_reaction(emoji)
 
+@commands.command(name='help')
+async def help_command(context, *commands):
+	"""Shows this message"""
+	if not commands:
+		commands = ('Highlight',)
+	await context.invoke(context.bot.default_help_command, *commands)
+
 class HighlightBot(commands.AutoShardedBot):
 	def __init__(self, *, config):
 		self.config = config
@@ -57,14 +64,7 @@ class HighlightBot(commands.AutoShardedBot):
 			formatter=simple_help_formatter.HelpFormatter())
 
 		self.default_help_command = self.remove_command('help')
-		self.add_command(self.help_command)
-
-	@commands.command(name='help')
-	async def help_command(self, context, *commands):
-		"""Shows this message"""
-		if not commands:
-			commands = ('Highlight',)
-		await context.invoke(self.default_help_command, *commands)
+		self.add_command(help_command)
 
 	def get_prefix_(self, bot, message):
 		prefixes = []

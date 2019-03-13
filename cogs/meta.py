@@ -24,7 +24,7 @@ from discord.ext import commands
 
 import utils
 
-class Meta:
+class Meta(commands.Cog):
 	@commands.command(aliases=['inv'])
 	async def invite(self, context):
 		"""Gives you a link to add me to your server."""
