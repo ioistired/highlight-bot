@@ -76,6 +76,7 @@ class Highlight(commands.Cog):
 		if (datetime.utcnow() - when).total_seconds() < INACTIVITY_CUTOFF:
 			self.bot.dispatch('user_activity', channel_id, user_id, when)
 
+	@commands.Cog.listener()
 	async def on_user_activity(self, channel_id, user_id, when):
 		"""dispatched whenever a user does something that would cause them to see recent messages in channel_id"""
 		self.recently_active[channel_id, user_id] = when
@@ -94,9 +95,11 @@ class Highlight(commands.Cog):
 			# no activity received in time
 			await self.notify(highlighted_user, highlight, message)
 
+	@commands.Cog.listener()
 	async def on_member_remove(self, member):
 		await self.db.clear(member.guild.id, member.id)
 
+	@commands.Cog.listener()
 	async def on_guild_leave(self, guild):
 		await self.db.clear_guild(guild.id)
 
@@ -107,6 +110,7 @@ class Highlight(commands.Cog):
 			# if they haven't spoken at all, then they also haven't spoken recently
 			return False
 
+	@commands.Cog.listener()
 	async def on_typing(self, channel, user, when):
 		self.track_user_activity(channel.id, user.id, when)
 
