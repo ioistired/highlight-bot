@@ -28,7 +28,6 @@ import asyncpg
 import discord
 from discord.ext import commands
 import json5
-import simple_help_formatter
 
 import utils
 from cogs.db import HighlightError
@@ -43,12 +42,14 @@ class CustomContext(commands.Context):
 		with contextlib.suppress(discord.HTTPException):
 			await self.message.add_reaction(emoji)
 
-@commands.command(name='help')
-async def help_command(context, *commands):
-	"""Shows this message"""
-	if not commands:
-		commands = ('Highlight',)
-	await context.invoke(context.bot.default_help_command, *commands)
+class HelpCommand(commands.MinimalHelpCommand):
+	async def send_bot_help(self, mapping):
+		cog = self.context.bot.get_cog('Highlight')
+		if cog is None:
+			await super().send_bot_help(mapping)
+			return
+
+		await self.send_cog_help(cog)
 
 class HighlightBot(commands.AutoShardedBot):
 	def __init__(self, *, config):
@@ -61,10 +62,7 @@ class HighlightBot(commands.AutoShardedBot):
 		super().__init__(
 			command_prefix=self.get_prefix_,
 			description='DMs you when certain words are said in chat.',
-			formatter=simple_help_formatter.HelpFormatter())
-
-		self.default_help_command = self.remove_command('help')
-		self.add_command(help_command)
+			help_command=HelpCommand())
 
 	def get_prefix_(self, bot, message):
 		prefixes = []

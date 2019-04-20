@@ -153,7 +153,7 @@ class Highlight(commands.Cog):
 
 		async def users_highlighted_by(self, highlight):
 			for user in self.highlight_users.getall(highlight):
-				user = self.bot.get_user(user) or await self.bot.get_user_info(user)
+				user = self.bot.get_user(user) or await self.bot.fetch_user(user)
 
 				if await self.should_notify_user(user, highlight):
 					yield user
@@ -244,7 +244,7 @@ class Highlight(commands.Cog):
 		orig_message = message
 		formatted_messages = '\n'.join([
 			cls.format_message(message, is_highlight=message.id == orig_message.id)
-			async for message in message.channel.history(around=message, limit=8, reverse=True)])
+			async for message in message.channel.history(around=message, limit=8, oldest_first=True)])
 
 		return '\n\n'.join((formatted_messages, f'[Original message]({message.jump_url})'))
 
