@@ -57,14 +57,12 @@ def asyncexecutor(*, timeout=None, loop=None, executor=None):
 	def decorator(func):
 		@functools.wraps(func)
 		def wrapper(*args, **kwargs):
-			nonlocal loop  # have to do this to fix the `loop = loop or` UnboundLocalError
-
 			partial = functools.partial(func, *args, **kwargs)
-			loop = loop or asyncio.get_event_loop()
+			loop_ = loop or asyncio.get_event_loop()
 
-			coro = loop.run_in_executor(executor, partial)
+			coro = loop_.run_in_executor(executor, partial)
 			# don't need to check if timeout is None since wait_for will just "block" in that case anyway
-			return asyncio.wait_for(coro, timeout=timeout, loop=loop)
+			return asyncio.wait_for(coro, timeout=timeout, loop=loop_)
 		return wrapper
 	return decorator
 
