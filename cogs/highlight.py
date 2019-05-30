@@ -24,7 +24,6 @@ import operator
 import re
 import typing
 
-import autoslot
 import discord
 from discord.ext import commands
 
@@ -128,8 +127,14 @@ class Highlight(commands.Cog):
 
 	# we use a class to have shared state which is isolated from the cog
 	# we use a nested class so as to have HighlightUser defined close to where it's used
-	class HighlightFinder(metaclass=autoslot.SlotsMeta):
-		__slots__ = {'highlight_users'}
+	class HighlightFinder:
+		__slots__ = {
+			'bot': '',
+			'db': 'type: DatabaseInterface',
+			'message': 'the message to process highlights for',
+			'author_id': 'ID of the user who sent the message',
+			'seen_users':
+				'users who have already been highlighted and should not be highlighted again for this message'}
 
 		def __init__(self, *, bot, message, db):
 			self.bot = bot
