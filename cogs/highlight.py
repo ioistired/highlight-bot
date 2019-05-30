@@ -62,6 +62,7 @@ class Highlight(commands.Cog):
 
 		self.track_user_activity(message.channel.id, message.author.id, message.created_at)
 
+		coros = []
 		async for highlighted_user, highlight in self.HighlightFinder(bot=self.bot, message=message, db=self.db):
 			info = message.channel.id, highlighted_user.id
 			if not self.was_recently_active(info):
@@ -70,7 +71,10 @@ class Highlight(commands.Cog):
 				# from notifying the user twice
 				self.recently_active[info] = datetime.utcnow()
 
-				await self.notify_if_user_is_inactive(highlighted_user, highlight, message)
+				coros.append(self.notify_if_user_is_inactive(highlighted_user, highlight, message))
+
+		# notify everyone asynchronously
+		await asyncio.gather(*coros)
 
 	def track_user_activity(self, channel_id, user_id, when):
 		if (datetime.utcnow() - when).total_seconds() < INACTIVITY_CUTOFF:
