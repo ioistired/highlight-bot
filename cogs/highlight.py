@@ -20,6 +20,7 @@ import collections
 import contextlib
 from datetime import datetime
 import functools
+import operator
 import re
 import typing
 
@@ -141,34 +142,19 @@ class Highlight(commands.Cog):
 			highlight_users = await self.db.channel_highlights(self.message.channel)
 			if not highlight_users:
 				return
-			self.highlight_users = highlight_users
 
-			regex = self.build_re(set(self.highlight_users.keys()))
+			regex = self.build_re(set(highlight_users.keys()))
 			content = self.remove_mentions(self.message.content)
 
-			for match in re.finditer(regex, content):
-				highlight = match[0]
-				async for user in self.users_highlighted_by(highlight):
-					yield user, highlight
+			for highlight in map(operator.itemgetter(0), re.finditer(regex, content)):
+				for user in highlight_users.getall(highlight):
+					user = self.bot.get_user(user) or await self.bot.fetch_user(user)
 
-		async def users_highlighted_by(self, highlight):
-			for user in self.highlight_users.getall(highlight):
-				user = self.bot.get_user(user) or await self.bot.fetch_user(user)
-
-				if await self.should_notify_user(user, highlight):
-					yield user
-
-		@staticmethod
-		def remove_mentions(content):
-			"""remove user @mentions from a message"""
-			# remove user mentions
-			return re.sub(r'<@!?\d+>', '', content, re.ASCII)
-			# don't remove role mentions because conceivably someone would want to be highlighted for a role they cannot join
-			# though it would be easier on the user to replace role mentions with @{role.name},
-			# @weeb should not highlight someone who has "weeb" set up as a mention
+					if await self.should_notify_user(user, highlight):
+						yield user, highlight
 
 		async def should_notify_user(self, user, highlight):
-			"""assuming that highlight was found in the message, return whether to notify the user"""
+			"""assuming that a highlight was found in the message, return whether to notify the user"""
 			if not self.message.guild.get_member(user.id):
 				# the user appears to have left the guild
 				return False
@@ -184,11 +170,12 @@ class Highlight(commands.Cog):
 				# pinging someone should not also highlight them
 				return False
 
-			if user not in self.seen_users:
-				self.seen_users.add(user)
-				return True
+			if user in self.seen_users:
+				# this user has already been highlighted for this message
+				return False
 
-			return False
+			self.seen_users.add(user)
+			return True
 
 		def blocked(self, user):
 			"""return whether this user (the highlightee) has blocked the highlighter"""
@@ -203,6 +190,14 @@ class Highlight(commands.Cog):
 				r'(?:{})'  # non capturing group, to make sure that the word bound occurs before/after all words
 				r'\b'
 			).format('|'.join(map(re.escape, highlights)))
+
+		@staticmethod
+		def remove_mentions(content):
+			"""remove user @mentions from a message"""
+			return re.sub(r'<@!?\d+>', '', content, re.ASCII)
+			# don't remove role mentions because conceivably someone would want to be highlighted for a role they cannot join
+			# though it would be easier on the user to replace role mentions with @{role.name},
+			# @weeb should not highlight someone who has "weeb" set up as a mention
 
 	@classmethod
 	async def notify(cls, user, highlight, message):
