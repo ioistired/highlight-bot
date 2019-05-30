@@ -35,7 +35,7 @@ from cogs.db import HighlightError
 BASE_DIR = os.path.dirname(__file__)
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('bot')
 
 class CustomContext(commands.Context):
 	async def try_add_reaction(self, emoji):
