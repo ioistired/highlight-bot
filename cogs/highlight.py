@@ -156,13 +156,14 @@ class Highlight(commands.Cog):
 			content = self.remove_mentions(self.message.content)
 
 			for highlight in map(operator.itemgetter(0), re.finditer(regex, content)):
-				for user in highlight_users.getall(highlight):
-					user = self.bot.get_user(user) or await self.bot.fetch_user(user)
+				for highlight_user in highlight_users.get(highlight.lower(), ()):
+					preferred_caps = highlight_user.preferred_caps
+					user = self.bot.get_user(highlight_user.id) or await self.bot.fetch_user(highlight_user.id)
 
-					if await self.should_notify_user(user, highlight):
-						yield user, highlight
+					if await self.should_notify(user):
+						yield user, preferred_caps
 
-		async def should_notify_user(self, user, highlight):
+		async def should_notify(self, user):
 			"""assuming that a highlight was found in the message, return whether to notify the user"""
 			if not self.message.guild.get_member(user.id):
 				# the user appears to have left the guild

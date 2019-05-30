@@ -15,12 +15,14 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+from collections import defaultdict, namedtuple
 import logging
+from typing import DefaultDict, List, Tuple
 
 import discord
 from discord.ext import commands
-from multidict import CIMultiDict
 
+# max highlights per user
 LIMIT = 10
 logger = logging.getLogger(__name__)
 
@@ -33,6 +35,8 @@ class TooManyHighlights(HighlightError):
 class InvalidHighlightLength(HighlightError):
 	pass
 
+HighlightUser = namedtuple('HighlightUser', 'id preferred_caps')
+
 class DatabaseInterface:
 	def __init__(self, bot):
 		self.pool = bot.pool
@@ -40,9 +44,8 @@ class DatabaseInterface:
 	### Queries
 
 	async def channel_highlights(self, channel):
-		# a multi dict allows multiple users to have the same highlight word
-		highlight_users = CIMultiDict()
-		async for user, highlight in self.cursor("""
+		highlight_users: DefaultDict[str, List[HighlightUser]] = defaultdict(list)
+		async for user_id, highlight in self.cursor("""
 			SELECT "user", highlight
 			FROM highlights
 			WHERE
@@ -54,7 +57,9 @@ class DatabaseInterface:
 						highlights.user = blocks.user
 						AND entity = ANY ($2))
 		""", channel.guild.id, (channel.id, getattr(channel.category, 'id', None))):
-			highlight_users.add(highlight, user)
+			# we store both lowercase and original case
+			# so that the original case can eventually be displayed to the user
+			highlight_users[highlight.lower()].append(HighlightUser(id=user_id, preferred_caps=highlight))
 
 		return highlight_users
 
