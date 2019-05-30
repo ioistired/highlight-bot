@@ -118,10 +118,11 @@ class HighlightBot(commands.AutoShardedBot):
 		return super().get_context(message, cls=cls or CustomContext)
 
 	def should_reply(self, message):
-		return not (
-			message.author == self.user
-			or (message.author.bot and not self._should_reply_to_bot(message))
-			or not message.content)
+		if message.author == self.user:
+			return False
+		if message.author.bot and not self._should_reply_to_bot(message):
+			return False
+		return True
 
 	def _should_reply_to_bot(self, message):
 		should_reply = not self.config['ignore_bots'].get('default', True)
