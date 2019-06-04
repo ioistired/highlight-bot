@@ -4,6 +4,11 @@ It DMs you when certain words are said in certain channels.
 
 ## [License](LICENSE.md)
 
+Most of the documentation is used under the "use my strings idc" license.
+Copyright © 2019 Rapptz
+
+As for the bot code:
+
 Copyright © 2018 Benjamin Mintz <bmintz@protonmail.com>
 
 This program is free software: you can redistribute it and/or modify
