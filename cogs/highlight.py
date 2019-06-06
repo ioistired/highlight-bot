@@ -165,21 +165,25 @@ class Highlight(commands.Cog):
 
 		async def should_notify(self, user):
 			"""assuming that a highlight was found in the message, return whether to notify the user"""
+			if (await self.bot.get_context(self.message)).valid:
+				# don't trigger on command invokes
+				# this prevents a sneaky user from adding "add" as a highlight and getting notified when someone
+				# adds a new highlight
+				return False
+			if self.message.author == self.bot.user:
+				# prevent someone adding "Your highlight words have been updated" as a highlight too
+				return False
 			if not self.message.guild.get_member(user.id):
 				# the user appears to have left the guild
 				return False
-
 			if user == self.message.author:
 				# users may not highlight themselves
 				return False
-
 			if await self.blocked(user):
 				return False
-
 			if user in self.message.mentions:
 				# pinging someone should not also highlight them
 				return False
-
 			if user in self.seen_users:
 				# this user has already been highlighted for this message
 				return False
