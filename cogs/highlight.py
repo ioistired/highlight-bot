@@ -17,6 +17,7 @@
 
 import asyncio
 import collections
+import copy
 import contextlib
 from datetime import datetime
 import functools
@@ -62,6 +63,8 @@ class Highlight(commands.Cog):
 
 		self.track_user_activity(message.channel.id, message.author.id, message.created_at)
 
+		# prevent message edits from updating this message obj
+		message = copy.copy(message)
 		coros = []
 		async for highlighted_user, highlight in self.HighlightFinder(bot=self.bot, message=message, db=self.db):
 			info = message.channel.id, highlighted_user.id
@@ -228,7 +231,6 @@ class Highlight(commands.Cog):
 	@classmethod
 	async def notification_message(cls, user, highlight, message):
 		"""Create an embed message to send to the user for being highlighted."""
-
 		content = (
 			f'In {message.channel.mention} for server {message.guild.name}, '
 			f'you were mentioned with highlight word **{highlight}**')
@@ -248,16 +250,18 @@ class Highlight(commands.Cog):
 	async def embed_description(cls, message):
 		orig_message = message
 		formatted_messages = '\n'.join([
-			cls.format_message(message, is_highlight=message.id == orig_message.id)
-			async for message in message.channel.history(around=message, limit=8, oldest_first=True)])
+			cls.format_message(orig_message, message)
+			async for message in message.channel.history(around=orig_message, limit=8, oldest_first=True)])
 
-		return '\n\n'.join((formatted_messages, f'[Original message]({message.jump_url})'))
+		return '\n\n'.join((formatted_messages, f'[Original message]({orig_message.jump_url})'))
 
 	@staticmethod
-	def format_message(message, *, is_highlight: bool):
+	def format_message(orig_message, message):
+		is_highlight = message.id == orig_message.id  # Message.__eq__ when
 		date = message.created_at.strftime('[%I:%M:%S %p UTC]')
 		date = f'**{date}**' if is_highlight else date
-		formatted = f'{date} {message.author}: {message.content}'
+		# display the original message content in case someone edits a message after highlighting
+		formatted = f'{date} {message.author}: {(orig_message if is_highlight else message).content}'
 		return formatted
 
 	### Commands
