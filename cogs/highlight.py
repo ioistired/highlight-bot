@@ -227,11 +227,7 @@ class Highlight(commands.Cog):
 
 	@classmethod
 	async def notification_message(cls, user, highlight, message):
-		"""Create an embed message to send to the user for being highlighted
-
-		Here's what it looks like:
-		https://dingo.csdisaster.club/~ben/highlight-notification-example.png
-		"""
+		"""Create an embed message to send to the user for being highlighted."""
 
 		content = (
 			f'In {message.channel.mention} for server {message.guild.name}, '
