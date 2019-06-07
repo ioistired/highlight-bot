@@ -15,9 +15,9 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.	If not, see <https://www.gnu.org/licenses/>.
 
-import asyncio
 import collections
 import functools
+import re
 
 import discord.utils
 from discord.ext import commands
@@ -65,3 +65,31 @@ class Guild(commands.Converter):
 		if guild:
 			return guild
 		raise commands.BadArgument('Server not found.')
+
+attrdict = type('attrdict', (dict,), {
+	'__getattr__': dict.__getitem__,
+	'__setattr__': dict.__setitem__,
+	'__delattr__': dict.__delitem__})
+
+# this function is Public Domain
+# https://creativecommons.org/publicdomain/zero/1.0/
+def load_sql(fp):
+	"""given a file-like object, read the queries delimited by `-- :name foo` comment lines
+	return a dict mapping these names to their respective SQL queries
+	the file-like is not closed afterwards.
+	"""
+	# tag -> list[lines]
+	queries = attrdict()
+	current_tag = ''
+
+	for line in fp:
+		match = re.match('\s*--\s*name:\s*(\S+).*?$', line)
+		if match:
+			current_tag = match[1]
+		if current_tag:
+			queries.setdefault(current_tag, []).append(line)
+
+	for tag, query in queries.items():
+		queries[tag] = ''.join(query)
+
+	return queries

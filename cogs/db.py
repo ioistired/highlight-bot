@@ -17,10 +17,13 @@
 
 from collections import defaultdict, namedtuple
 import logging
+import os.path
 from typing import DefaultDict, List, Tuple
 
 import discord
 from discord.ext import commands
+
+import utils
 
 # max highlights per user
 LIMIT = 10
@@ -37,26 +40,23 @@ class InvalidHighlightLength(HighlightError):
 
 HighlightUser = namedtuple('HighlightUser', 'id preferred_caps')
 
+# it's here to resolve a circular import
+from bot import BASE_DIR
+
 class DatabaseInterface:
 	def __init__(self, bot):
 		self.pool = bot.pool
+		with open(os.path.join(BASE_DIR, 'sql', 'queries.sql')) as f:
+			self.queries = utils.load_sql(f)
 
 	### Queries
 
 	async def channel_highlights(self, channel):
 		highlight_users: DefaultDict[str, List[HighlightUser]] = defaultdict(list)
-		async for user_id, highlight in self.cursor("""
-			SELECT "user", highlight
-			FROM highlights
-			WHERE
-				guild = $1
-				AND NOT EXISTS (
-					SELECT 1
-					FROM blocks
-					WHERE
-						highlights.user = blocks.user
-						AND entity = ANY ($2))
-		""", channel.guild.id, (channel.id, getattr(channel.category, 'id', None))):
+		async for user_id, highlight in self.cursor(
+			self.queries.channel_highlights,
+			channel.guild.id, (channel.id, getattr(channel.category, 'id', None))
+		):
 			# we store both lowercase and original case
 			# so that the original case can eventually be displayed to the user
 			highlight_users[highlight.lower()].append(HighlightUser(id=user_id, preferred_caps=highlight))
@@ -65,98 +65,57 @@ class DatabaseInterface:
 
 	async def user_highlights(self, guild, user):
 		# tfw no "fetchvals"
-		return [row['highlight'] async for row in self.cursor("""
-			SELECT highlight
-			FROM highlights
-			WHERE
-				guild = $1
-				AND "user" = $2
-		""", guild, user)]
+		return [row['highlight'] for row in await self.pool.fetch(self.queries.user_highlights, guild, user)]
 
 	async def blocks(self, user):
-		return set([row['entity'] async for row in self.cursor("""
-			SELECT entity
-			FROM blocks
-			WHERE "user" = $1
-		""", user)])
+		return set([row['entity'] for row in await self.pool.fetch(self.queries.blocks, user)])
 
-	def blocked(self, user, entity):
+	async def blocked(self, user, entity):
 		"""Return whether user has blocked entity"""
-		return self.pool.fetchval("""
-			SELECT true
-			FROM blocks
-			WHERE
-				"user" = $1
-				AND entity = $2
-		""", user, entity)
+		return await self.pool.fetchval(self.queries.blocked, user, entity)
 
 	### Actions
 
 	async def add(self, guild, user, highlight):
-		await self._add_highlight_check(guild, user, highlight)
+		async with self.pool.acquire() as conn, conn.transaction():
+			await self._add_highlight_check(guild, user, highlight, connection=conn)
+			await conn.execute(self.queries.add, guild, user, highlight)
 
-		await self.pool.execute("""
-			INSERT INTO highlights(guild, "user", highlight)
-			VALUES ($1, $2, $3)
-			ON CONFLICT DO NOTHING
-		""", guild, user, highlight)
-
-	async def _add_highlight_check(self, guild, user, highlight):
+	async def _add_highlight_check(self, guild, user, highlight, *, connection):
 		if len(highlight) < 3:
 			raise InvalidHighlightLength('Highlight word or phrase is too small.')
 		if len(highlight) > 50:
 			raise InvalidHighlightLength('Highlight word or phrase is too long.')
 
-		count = await self.highlight_count(guild, user)
+		count = await self.highlight_count(guild, user, connection=connection)
 		if count > LIMIT:
 			logger.error('highlight count for guild=%s user=%s exceeds limit of %d!', guild, user, LIMIT)
 		if count >= LIMIT:
 			raise TooManyHighlights('You have too many highlight words or phrases.')
 
 	async def remove(self, guild, user, highlight):
-		await self.pool.execute("""
-			DELETE FROM highlights
-			WHERE
-				guild = $1
-				AND "user" = $2
-				AND LOWER(highlight) = LOWER($3)
-		""", guild, user, highlight)
+		await self.pool.execute(self.queries.remove, guild, user, highlight)
 
 	async def clear(self, guild, user):
-		await self.pool.execute("""
-			DELETE FROM highlights
-			WHERE
-				guild = $1
-				AND "user" = $2
-		""", guild, user)
+		await self.pool.execute(self.queries.clear, guild, user)
 
 	async def clear_guild(self, guild):
-		await self.pool.execute("""
-			DELETE FROM highlights
-			WHERE guild = $1
-		""", guild)
+		await self.pool.execute(self.queries.clear_guild, guild)
 
 	async def import_(self, source_guild, target_guild, user):
-		await self._import_highlights_check(source_guild, target_guild, user)
+		async with self.pool.acquire() as conn, conn.transaction():
+			await self._import_highlights_check(source_guild, target_guild, user, connection=conn)
+			await conn.execute(self.queries.import_, source_guild, target_guild, user)
 
-		await self.pool.execute("""
-			INSERT INTO highlights (guild, "user", highlight)
-			SELECT $2, "user", highlight
-			FROM highlights
-			WHERE
-				guild = $1
-				AND "user" = $3
-			ON CONFLICT DO NOTHING
-		""", source_guild, target_guild, user)
-
-	async def _import_highlights_check(self, source_guild, target_guild, user):
-		source_guild_count = await self.highlight_count(source_guild, user)
-		target_guild_count = await self.highlight_count(target_guild, user)
+	async def _import_highlights_check(self, source_guild, target_guild, user, *, connection):
+		source_guild_count = await self.highlight_count(source_guild, user, connection=connection)
+		target_guild_count = await self.highlight_count(target_guild, user, connection=connection)
 		total = source_guild_count + target_guild_count
 
 		if total > LIMIT * 2:
 			logger.error(
-				'highlight count for guild in {%d, %d}, user=%d exceeds limit of %d!',
+				'highlight count (%d) for guild in {%d, %d}, user=%d exceeds limit of %d!',
+				total,
 				source_guild,
 				target_guild,
 				user,
@@ -164,33 +123,19 @@ class DatabaseInterface:
 		if total >= LIMIT:
 			raise TooManyHighlights('Import would place you over the maximum number of highlight words.')
 
-	def highlight_count(self, guild, user):
-		return self.pool.fetchval("""
-			SELECT COUNT(*)
-			FROM highlights
-			WHERE
-				guild = $1
-				AND "user" = $2
-		""", guild, user)
+	async def highlight_count(self, guild, user, *, connection=None):
+		return await (connection or self.pool).fetchval(self.queries.highlight_count, guild, user)
 
 	async def block(self, user, entity: int):
-		await self.pool.execute("""
-			INSERT INTO blocks ("user", entity)
-			VALUES ($1, $2)
-			ON CONFLICT DO NOTHING
-		""", user, entity)
+		await self.pool.execute(self.queries.block, user, entity)
 
 	async def unblock(self, user, entity: int):
-		await self.pool.execute("""
-			DELETE FROM blocks
-			WHERE
-				"user" = $1
-				AND entity = $2
-		""", user, entity)
+		await self.pool.execute(self.queries.unblock, user, entity)
 
 	async def delete_account(self, user):
-		for table in 'highlights', 'blocks':
-			await self.pool.execute(f'DELETE FROM {table} WHERE "user" = $1', user)
+		async with self.pool.acquire() as conn, conn.transaction():
+			for table in 'highlights', 'blocks':
+				await conn.execute(self.queries.delete_by_user.format(table=table), user)
 
 	async def cursor(self, query, *args):
 		async with self.pool.acquire() as connection, connection.transaction():

@@ -30,9 +30,11 @@ from discord.ext import commands
 import json5
 
 import utils
-from cogs.db import HighlightError
 
+# has to go first to resolve import dependencies
 BASE_DIR = os.path.dirname(__file__)
+
+from cogs.db import HighlightError
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('bot')
@@ -159,7 +161,7 @@ class HighlightBot(commands.AutoShardedBot):
 
 			await context.send('An internal error occured while trying to run that command.')
 
-	async def login(self, token, **kwargs):
+	async def login(self, token=None, **kwargs):
 		await self._init_db()
 		self._load_extensions()
 
