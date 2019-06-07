@@ -217,7 +217,8 @@ class Highlight(commands.Cog):
 		embed.description = await cls.embed_description(message)
 		embed.set_author(name=message.author.name, icon_url=message.author.avatar_url_as(format='png', size=64))
 
-		embed.set_footer(text='Triggered')	# "Triggered today at 21:21"
+		# "Triggered today at 21:21"
+		embed.set_footer(text='Triggered')
 		embed.timestamp = message.created_at
 
 		return dict(content=content, embed=embed)
@@ -245,7 +246,7 @@ class Highlight(commands.Cog):
 	@guild_only_command(aliases=['show', 'ls'])
 	async def list(self, context):
 		"""Shows all your highlights words or phrases."""
-		self.delete_later(context.message)
+		await context.message.delete(delay=DELETE_AFTER)
 
 		highlights = await self.db.user_highlights(context.guild.id, context.author.id)
 		if not highlights:
@@ -273,7 +274,7 @@ class Highlight(commands.Cog):
 		To prevent abuse of the service, you may only have up to 10
 		highlight word or phrases.
 		"""
-		self.delete_later(context.message)
+		await context.message.delete(delay=DELETE_AFTER)
 		try:
 			await self.db.add(context.guild.id, context.author.id, highlight)
 		except commands.UserInputError:
@@ -289,19 +290,18 @@ class Highlight(commands.Cog):
 		Highlight words and phrases are not case-sensitive,
 		so coffee, Coffee, and COFFEE will all notify you.
 		"""
-		self.delete_later(context.message)
+		await context.message.delete(delay=DELETE_AFTER)
 		await self.db.remove(context.guild.id, context.author.id, highlight)
 		await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
 
 	@commands.command(aliases=['blocks'])
 	async def blocked(self, context):
 		"""Shows you the users or channels that you have globally blocked."""
-		self.delete_later(context.message)
-
-		entities = list(map(self.format_entity, await self.db.blocks(context.author.id)))
+		await context.message.delete(delay=DELETE_AFTER)
 
 		embed = self.author_embed(context.author)
 		embed.title = 'Blocked'
+		entities = list(map(self.format_entity, await self.db.blocks(context.author.id)))
 		embed.description='\n'.join(entities)
 		embed.set_footer(text=f'{len(entities)} entities blocked')
 
@@ -322,9 +322,7 @@ class Highlight(commands.Cog):
 
 	@staticmethod
 	def author_embed(author):
-		return discord.Embed().set_author(
-			name=str(author),
-			icon_url=author.avatar_url_as(format='png', size=64))
+		return discord.Embed().set_author(name=str(author), icon_url=author.avatar_url_as(format='png', size=64))
 
 	@guild_only_command()
 	async def block(self, context, *, entity: Entity):
@@ -333,7 +331,7 @@ class Highlight(commands.Cog):
 		This is functionally equivalent to the Discord block feature,
 		which blocks them globally. This is not a per-server block.
 		"""
-		self.delete_later(context.message)
+		await context.message.delete(delay=DELETE_AFTER)
 		await self.db.block(context.author.id, entity.id)
 		await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
 
@@ -343,14 +341,14 @@ class Highlight(commands.Cog):
 
 		This reverts a previous block action.
 		"""
-		self.delete_later(context.message)
+		await context.message.delete(delay=DELETE_AFTER)
 		await self.db.unblock(context.author.id, entity.id)
 		await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
 
 	@commands.command(name='blocked-by', aliases=['blocked-by?', 'blocked?'])
 	async def blocked_by(self, context, *, user: User):
 		"""Tells you if a given user has blocked you."""
-		self.delete_later(context.message)
+		await context.message.delete(delay=DELETE_AFTER)
 		clean = functools.partial(commands.clean_content().convert, context)
 		if await self.db.blocked(user.id, context.author.id):
 			await context.send(await clean(f'Yes, {user.mention} has blocked you.'), delete_after=DELETE_AFTER)
@@ -360,7 +358,7 @@ class Highlight(commands.Cog):
 	@guild_only_command()
 	async def clear(self, context):
 		"""Removes all your highlight words or phrases."""
-		self.delete_later(context.message)
+		await context.message.delete(delay=DELETE_AFTER)
 		await self.db.clear(context.guild.id, context.author.id)
 		await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
 
@@ -374,7 +372,7 @@ class Highlight(commands.Cog):
 
 		You can provide the server either by ID or by name. Names are case-sensitive.
 		"""
-		self.delete_later(context.message)
+		await context.message.delete(delay=DELETE_AFTER)
 		try:
 			await self.db.import_(source_guild=server.id, target_guild=context.guild.id, user=context.author.id)
 		except commands.UserInputError:
@@ -418,13 +416,6 @@ class Highlight(commands.Cog):
 			return False
 		else:
 			return True
-
-	def delete_later(self, message, delay=DELETE_AFTER):
-		async def delete_after():
-			await asyncio.sleep(delay)
-			with contextlib.suppress(discord.HTTPException):
-				await message.delete()
-		self.bot.loop.create_task(delete_after())
 
 def setup(bot):
 	bot.add_cog(Highlight(bot))
