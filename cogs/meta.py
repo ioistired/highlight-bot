@@ -21,7 +21,9 @@ import pkg_resources
 
 import discord
 from discord.ext import commands
+import pygit2
 
+from bot import BASE_DIR
 import utils
 
 class Meta(commands.Cog):
@@ -73,7 +75,7 @@ class Meta(commands.Cog):
 		if module.startswith(self.__module__.split('.')[0]):  # XXX dunno if this branch works
 			# not a built-in command
 			location = os.path.relpath(inspect.getfile(src)).replace('\\', '/')
-			at = await self._current_revision()
+			at = self._current_revision()
 		elif module.startswith('discord'):
 			source_url = 'https://github.com/Rapptz/discord.py'
 			at = self._discord_revision()
@@ -91,12 +93,10 @@ class Meta(commands.Cog):
 		await context.send(final_url)
 
 	@staticmethod
-	@utils.asyncexecutor()
-	def _current_revision(*, default='master'):
-		try:
-			return os.popen('git rev-parse HEAD').read().strip()
-		except OSError:
-			return default
+	def _current_revision():
+		repo = pygit2.Repository(os.path.join(BASE_DIR, '.git'))
+		c = next(repo.walk(repo.head.target, pygit2.GIT_SORT_TOPOLOGICAL))
+		return c.hex[:6]
 
 	@classmethod
 	def _discord_revision(cls, *, default='rewrite'):
