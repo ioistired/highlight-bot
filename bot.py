@@ -159,11 +159,11 @@ class HighlightBot(commands.AutoShardedBot):
 
 			await context.send('An internal error occured while trying to run that command.')
 
-	async def start(self):
+	async def login(self, token, **kwargs):
 		await self._init_db()
 		self._load_extensions()
 
-		await super().start(self.config['tokens'].pop('discord'))
+		await super().login(self.config['tokens'].pop('discord'), **kwargs)
 
 	async def _init_db(self):
 		credentials = self.config.pop('database')
@@ -174,14 +174,13 @@ class HighlightBot(commands.AutoShardedBot):
 			self.load_extension(extension)
 			logger.info('Successfully loaded %s', extension)
 
-	async def logout(self):
+	async def close(self):
 		with contextlib.suppress(AttributeError):
 			await self.pool.close()
-		await super().logout()
+		await super().close()
 
 if __name__ == '__main__':
 	with open(os.path.join(BASE_DIR, 'config.json5')) as f:
 		config = json5.load(f)
 
-	bot = HighlightBot(config=config)
-	bot.run()
+	HighlightBot(config=config).run()
