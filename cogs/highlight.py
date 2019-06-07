@@ -19,10 +19,10 @@ import asyncio
 import collections
 import copy
 import contextlib
-from datetime import datetime
 import functools
 import operator
 import re
+import time
 import typing
 
 import discord
@@ -61,7 +61,7 @@ class Highlight(commands.Cog):
 		if not message.guild or not self.bot.should_reply(message):
 			return
 
-		self.track_user_activity(message.channel.id, message.author.id, message.created_at)
+		self.bot.dispatch('user_activity', message.channel.id, message.author.id)
 
 		# prevent message edits from updating this message obj
 		message = copy.copy(message)
@@ -72,32 +72,25 @@ class Highlight(commands.Cog):
 				# add to the dict first to prevent other message events from notifying as well
 				# this is to prevent two messages sent in immediate succession
 				# from notifying the user twice
-				self.recently_active[info] = datetime.utcnow()
+				self.recently_active[info] = time.monotonic()
 
 				coros.append(self.notify_if_user_is_inactive(highlighted_user, highlight, message))
 
 		# notify everyone asynchronously
 		await asyncio.gather(*coros)
 
-	def track_user_activity(self, channel_id, user_id, when):
-		if (datetime.utcnow() - when).total_seconds() < INACTIVITY_CUTOFF:
-			self.bot.dispatch('user_activity', channel_id, user_id, when)
-
 	@commands.Cog.listener()
-	async def on_user_activity(self, channel_id, user_id, when):
+	async def on_user_activity(self, channel_id, user_id):
 		"""dispatched whenever a user does something that would cause them to see recent messages in channel_id"""
-		self.recently_active[channel_id, user_id] = when
+		self.recently_active[channel_id, user_id] = time.monotonic()
 
 	async def notify_if_user_is_inactive(self, highlighted_user, highlight, message):
-		# allow new messages to come in so the user gets some more context
-		time_needed = self.time_difference_needed(message.created_at, NEW_MESSAGES_DELAY)
-
 		try:
 			await self.bot.wait_for('user_activity',
-				check=lambda channel_id, user_id, when:
+				check=lambda channel_id, user_id:
 					channel_id == message.channel.id
 					and user_id == highlighted_user.id,
-				timeout=time_needed)
+				timeout=NEW_MESSAGES_DELAY)
 		except asyncio.TimeoutError:
 			# no activity received in time
 			await self.notify(highlighted_user, highlight, message)
@@ -112,25 +105,14 @@ class Highlight(commands.Cog):
 
 	def was_recently_active(self, info, *, delay=INACTIVITY_CUTOFF):
 		try:
-			return (datetime.utcnow() - self.recently_active[info]).total_seconds() < delay
+			return time.monotonic() - self.recently_active[info] < delay
 		except KeyError:
 			# if they haven't spoken at all, then they also haven't spoken recently
 			return False
 
 	@commands.Cog.listener()
 	async def on_typing(self, channel, user, when):
-		self.track_user_activity(channel.id, user.id, when)
-
-	@commands.Cog.listener(name='on_raw_reaction_add')
-	@commands.Cog.listener(name='on_raw_reaction_remove')
-	async def on_raw_reaction(self, payload):
-		# assume that a user reacting to a message sent an hour ago, has seen the channel an hour ago
-		# but track it in case the user reacts to a message sent 3 seconds ago
-		# in practice this technique is not ideal, because: if the user sees a message created 3 hours ago,
-		# but that message is the most recent message in a given channel, they should not be highlighted either
-		# but it's expensive to determine whether this message is the last message.
-		message_creation = discord.utils.snowflake_time(payload.message_id)
-		self.track_user_activity(payload.channel_id, payload.user_id, message_creation)
+		self.bot.dispatch('user_activity', channel.id, user.id)
 
 	# we use a class to have shared state which is isolated from the cog
 	# we use a nested class so as to have HighlightUser defined close to where it's used
@@ -221,12 +203,6 @@ class Highlight(commands.Cog):
 		message = await cls.notification_message(user, highlight, message)
 		with contextlib.suppress(discord.HTTPException):
 			await user.send(**message)
-
-	@staticmethod
-	def time_difference_needed(time: datetime, max_delay: float):
-		"""return the number of seconds needed to ensure that max_delay seconds have elapsed since time"""
-		diff = max(0, (datetime.utcnow() - time).total_seconds())
-		return max_delay - diff
 
 	@classmethod
 	async def notification_message(cls, user, highlight, message):
