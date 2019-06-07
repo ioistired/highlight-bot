@@ -56,9 +56,6 @@ class HighlightBot(commands.AutoShardedBot):
 		self.config = config
 		self._process_config()
 		self._fallback_prefix = str(uuid.uuid4())
-
-		self.db_ready = asyncio.Event()
-
 		super().__init__(
 			command_prefix=self.get_prefix_,
 			description='DMs you when certain words are said in chat.',
@@ -169,14 +166,8 @@ class HighlightBot(commands.AutoShardedBot):
 		await super().start(self.config['tokens'].pop('discord'))
 
 	async def _init_db(self):
-		credentials = self.config['database']
-		pool = await asyncpg.create_pool(**credentials)
-
-		with open(os.path.join(BASE_DIR, 'schema.sql')) as f:
-			await pool.execute(f.read())
-
-		self.pool = pool
-		self.db_ready.set()
+		credentials = self.config.pop('database')
+		self.pool = await asyncpg.create_pool(**credentials)
 
 	def _load_extensions(self):
 		for extension in self.config['startup_extensions']:
