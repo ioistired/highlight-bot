@@ -8,7 +8,8 @@ CREATE INDEX highlights_guild_idx ON highlights (guild);
 
 CREATE TABLE blocks(
 	"user" BIGINT NOT NULL,
-	entity BIGINT NOT NULL);
+	entity BIGINT NOT NULL,
 
-CREATE UNIQUE INDEX IF NOT EXISTS blocks_unique_idx ON blocks ("user", entity);
+	PRIMARY KEY ("user", entity));
+
 CREATE INDEX IF NOT EXISTS blocks_entity_idx ON blocks (entity);
