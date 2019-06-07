@@ -96,7 +96,7 @@ class Meta(commands.Cog):
 	def _current_revision():
 		repo = pygit2.Repository(os.path.join(BASE_DIR, '.git'))
 		c = next(repo.walk(repo.head.target, pygit2.GIT_SORT_TOPOLOGICAL))
-		return c.hex[:6]
+		return c.hex[:10]
 
 	@classmethod
 	def _discord_revision(cls, *, default='rewrite'):
