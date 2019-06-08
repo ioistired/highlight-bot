@@ -133,14 +133,13 @@ class Highlight(commands.Cog):
 			self.seen_users = set()
 
 		async def __aiter__(self):
-			highlight_users = await self.db.channel_highlights(self.message.channel)
+			highlight_users, regex = await self.db.channel_highlights(self.message.channel)
 			if not highlight_users:
 				return
 
-			regex = self.build_re(set(highlight_users.keys()))
 			content = self.remove_mentions(self.message.content)
 
-			for highlight in map(operator.itemgetter(0), re.finditer(regex, content)):
+			for highlight in map(operator.itemgetter(0), regex.finditer(content)):
 				for highlight_user in highlight_users.get(highlight.lower(), ()):
 					preferred_caps = highlight_user.preferred_caps
 					user = self.bot.get_user(highlight_user.id) or await self.bot.fetch_user(highlight_user.id)
@@ -180,15 +179,6 @@ class Highlight(commands.Cog):
 			"""return whether this user (the highlightee) has blocked the highlighter"""
 			# we only have to check if the *user* is blocked here bc the database filters out blocked channels
 			return self.db.blocked(user.id, self.author_id)
-
-		@staticmethod
-		def build_re(highlights):
-			return (
-				r'(?i)'  # case insensitive
-				r'\b'  # word bound
-				r'(?:{})'  # non capturing group, to make sure that the word bound occurs before/after all words
-				r'\b'
-			).format('|'.join(map(re.escape, highlights)))
 
 		@staticmethod
 		def remove_mentions(content):
@@ -332,7 +322,7 @@ class Highlight(commands.Cog):
 		which blocks them globally. This is not a per-server block.
 		"""
 		await context.message.delete(delay=DELETE_AFTER)
-		await self.db.block(context.author.id, entity.id)
+		await self.db.block(context.guild.id, context.author.id, entity.id)
 		await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
 
 	@guild_only_command()
@@ -342,7 +332,7 @@ class Highlight(commands.Cog):
 		This reverts a previous block action.
 		"""
 		await context.message.delete(delay=DELETE_AFTER)
-		await self.db.unblock(context.author.id, entity.id)
+		await self.db.unblock(context.guild.id, context.author.id, entity.id)
 		await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
 
 	@commands.command(name='blocked-by', aliases=['blocked-by?', 'blocked?'])

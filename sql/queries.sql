@@ -90,7 +90,6 @@ WHERE
 	"user" = $1
 	AND entity = $2
 
-
 -- name: delete_by_user
 -- params: user_id
 DELETE FROM {table}

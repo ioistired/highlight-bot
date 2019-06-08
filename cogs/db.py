@@ -18,6 +18,7 @@
 from collections import defaultdict, namedtuple
 import logging
 import os.path
+import re
 from typing import DefaultDict, List, Tuple
 
 import discord
@@ -45,13 +46,18 @@ from bot import BASE_DIR
 
 class DatabaseInterface:
 	def __init__(self, bot):
+		self.bot = bot
 		self.pool = bot.pool
 		with open(os.path.join(BASE_DIR, 'sql', 'queries.sql')) as f:
 			self.queries = utils.load_sql(f)
+		self.highlight_cache = defaultdict(dict)
 
 	### Queries
 
 	async def channel_highlights(self, channel):
+		if channel.id in self.highlight_cache.get(channel.guild.id, {}):
+			return self.highlight_cache[channel.guild.id][channel.id]
+
 		highlight_users: DefaultDict[str, List[HighlightUser]] = defaultdict(list)
 		async for user_id, highlight in self.cursor(
 			self.queries.channel_highlights,
@@ -61,7 +67,22 @@ class DatabaseInterface:
 			# so that the original case can eventually be displayed to the user
 			highlight_users[highlight.lower()].append(HighlightUser(id=user_id, preferred_caps=highlight))
 
-		return highlight_users
+		for channel_id, (other_highlight_users, regex) in self.highlight_cache[channel.guild.id].items():
+			if highlight_users == other_highlight_users:
+				self.highlight_cache[channel.guild.id][channel.id] = ret = (other_highlight_users, regex)
+				return ret
+
+		self.highlight_cache[channel.guild.id][channel.id] = ret = (
+			highlight_users, self._build_re(set(highlight_users.keys())))
+		return ret
+
+	def _build_re(self, highlights):
+		return re.compile((
+			r'(?i)'  # case insensitive
+			r'\b'  # word bound
+			r'(?:{})'  # non capturing group, to make sure that the word bound occurs before/after all words
+			r'\b'
+		).format('|'.join(map(re.escape, highlights))))
 
 	async def user_highlights(self, guild, user):
 		# tfw no "fetchvals"
@@ -77,6 +98,7 @@ class DatabaseInterface:
 	### Actions
 
 	async def add(self, guild, user, highlight):
+		self._remove_from_cache(guild)
 		async with self.pool.acquire() as conn, conn.transaction():
 			await self._add_highlight_check(guild, user, highlight, connection=conn)
 			await conn.execute(self.queries.add, guild, user, highlight)
@@ -94,15 +116,19 @@ class DatabaseInterface:
 			raise TooManyHighlights('You have too many highlight words or phrases.')
 
 	async def remove(self, guild, user, highlight):
+		self._remove_from_cache(guild)
 		await self.pool.execute(self.queries.remove, guild, user, highlight)
 
 	async def clear(self, guild, user):
+		self._remove_from_cache(guild)
 		await self.pool.execute(self.queries.clear, guild, user)
 
 	async def clear_guild(self, guild):
+		self._remove_from_cache(guild)
 		await self.pool.execute(self.queries.clear_guild, guild)
 
 	async def import_(self, source_guild, target_guild, user):
+		self._remove_from_cache(target_guild)
 		async with self.pool.acquire() as conn, conn.transaction():
 			await self._import_highlights_check(source_guild, target_guild, user, connection=conn)
 			await conn.execute(self.queries.import_, source_guild, target_guild, user)
@@ -126,16 +152,31 @@ class DatabaseInterface:
 	async def highlight_count(self, guild, user, *, connection=None):
 		return await (connection or self.pool).fetchval(self.queries.highlight_count, guild, user)
 
-	async def block(self, user, entity: int):
+	async def block(self, guild, user, entity: int):
+		self._remove_from_cache(guild, entity)
 		await self.pool.execute(self.queries.block, user, entity)
 
-	async def unblock(self, user, entity: int):
+	async def unblock(self, guild, user, entity: int):
+		self._remove_from_cache(guild, entity)
 		await self.pool.execute(self.queries.unblock, user, entity)
 
 	async def delete_account(self, user):
+		user = self.bot.get_user(user)
+		if user is not None:
+			for guild in self.bot.guilds:
+				if guild.get_member(user.id):
+					self._remove_from_cache(guild.id)
+
 		async with self.pool.acquire() as conn, conn.transaction():
 			for table in 'highlights', 'blocks':
 				await conn.execute(self.queries.delete_by_user.format(table=table), user)
+
+	def _remove_from_cache(self, guild_id, channel_id=None):
+		if channel_id is not None:
+			self.highlight_cache.get(guild_id, {}).pop(channel_id, None)
+			return
+
+		self.highlight_cache.pop(guild_id)
 
 	async def cursor(self, query, *args):
 		async with self.pool.acquire() as connection, connection.transaction():
