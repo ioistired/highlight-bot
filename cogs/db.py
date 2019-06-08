@@ -50,7 +50,7 @@ class DatabaseInterface:
 		self.pool = bot.pool
 		with open(os.path.join(BASE_DIR, 'sql', 'queries.sql')) as f:
 			self.queries = utils.load_sql(f)
-		self.highlight_cache = defaultdict(dict)
+		self.highlight_cache = utils.LRUDict(size=1_000)
 
 	### Queries
 
@@ -67,12 +67,12 @@ class DatabaseInterface:
 			# so that the original case can eventually be displayed to the user
 			highlight_users[highlight.lower()].append(HighlightUser(id=user_id, preferred_caps=highlight))
 
-		for channel_id, (other_highlight_users, regex) in self.highlight_cache[channel.guild.id].items():
+		for other_highlight_users, regex in self.highlight_cache.get(channel.guild.id, {}).values():
 			if highlight_users == other_highlight_users:
-				self.highlight_cache[channel.guild.id][channel.id] = ret = (other_highlight_users, regex)
+				self.highlight_cache.setdefault[channel.guild.id][channel.id] = ret = (other_highlight_users, regex)
 				return ret
 
-		self.highlight_cache[channel.guild.id][channel.id] = ret = (
+		self.highlight_cache.setdefault(channel.guild.id, {})[channel.id] = ret = (
 			highlight_users, self._build_re(set(highlight_users.keys())))
 		return ret
 
@@ -176,7 +176,7 @@ class DatabaseInterface:
 			self.highlight_cache.get(guild_id, {}).pop(channel_id, None)
 			return
 
-		self.highlight_cache.pop(guild_id)
+		self.highlight_cache.pop(guild_id, None)
 
 	async def cursor(self, query, *args):
 		async with self.pool.acquire() as connection, connection.transaction():
