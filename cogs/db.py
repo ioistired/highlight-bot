@@ -69,7 +69,7 @@ class DatabaseInterface:
 
 		for other_highlight_users, regex in self.highlight_cache.get(channel.guild.id, {}).values():
 			if highlight_users == other_highlight_users:
-				self.highlight_cache.setdefault[channel.guild.id][channel.id] = ret = (other_highlight_users, regex)
+				self.highlight_cache.setdefault(channel.guild.id, {})[channel.id] = ret = (other_highlight_users, regex)
 				return ret
 
 		self.highlight_cache.setdefault(channel.guild.id, {})[channel.id] = ret = (
