@@ -2,6 +2,28 @@
 
 It DMs you when certain words are said in certain channels.
 
+## Self hosting
+
+Instructions are for a Debian Linux host. Modify accordingly.
+I'll assume you have a Linux user called "bots"
+
+```
+$ sudo -u postgres psql
+postgres=# CREATE USER bots;
+postgres=# CREATE DATABASE highlight WITH OWNER bots;
+postgres=# ^D
+$ psql highlight -f sql/schema.sql
+$ python -m venv .venv
+$ source .venv/bin/activate
+$ pip install -Ur requirements.txt
+$ ./bot.py
+```
+
+Now copy config.example.json5 to config.json5 and modify it accordingly.
+
+To migrate the database, `pip install migra`, set up a database for staging,
+run the new schema file against that database, then just `migra postgresql:///cm postgresql:///cm_migrate | psql cm` for example.
+
 ## [License](LICENSE.md)
 
 Most of the documentation is used under the "use my strings idc" license.
