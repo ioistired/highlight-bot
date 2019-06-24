@@ -5,7 +5,8 @@ It DMs you when certain words are said in certain channels.
 ## Self hosting
 
 Instructions are for a Debian Linux host. Modify accordingly.
-I'll assume you have a Linux user called "bots"
+I'll assume you have a Linux user called "bots". This requires a working Rust Stable installation, including cargo.
+If you don't have one, look in your distribution's package manager, or use <https://rustup.rs/>.
 
 ```
 $ sudo -u postgres psql
@@ -15,6 +16,11 @@ postgres=# ^D
 $ psql highlight -f sql/schema.sql
 $ python -m venv .venv
 $ source .venv/bin/activate
+$ git clone --recursive https://github.com/nitros12/like-aho-corasick-but-different-py/ path/to/somewhere/other/than/highlight-bot/
+$ cd $wherever_you_cloned_it
+$ make
+$ cd path/to/highlight-bot/
+$ cp -a $wherever_you_cloned_like-aho-corasick-but-different-py/lacbd .venv/lib/python3.x/site-packages/
 $ pip install -Ur requirements.txt
 $ ./bot.py
 ```
