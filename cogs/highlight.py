@@ -133,14 +133,14 @@ class Highlight(commands.Cog):
 			self.seen_users = set()
 
 		async def __aiter__(self):
-			highlight_users, regex = await self.db.channel_highlights(self.message.channel)
-			if not highlight_users:
+			searcher = await self.db.channel_highlights(self.message.channel)
+			if not searcher:
 				return
 
 			content = self.remove_mentions(self.message.content)
 
-			for highlight in map(operator.itemgetter(0), regex.finditer(content)):
-				for highlight_user in highlight_users.get(highlight.lower(), ()):
+			for highlight_users in searcher.search(content):
+				for highlight_user in highlight_users:
 					preferred_caps = highlight_user.preferred_caps
 					user = self.bot.get_user(highlight_user.id) or await self.bot.fetch_user(highlight_user.id)
 
