@@ -26,6 +26,10 @@ from discord.ext import commands
 
 import utils
 
+# minimum length in characters of a highlight keyword
+# TODO count grapheme clusters instead?
+MIN_HIGHLIGHT_LENGTH = 2
+MAX_HIGHLIGHT_LENGTH = 200
 # max highlights per user
 LIMIT = 10
 logger = logging.getLogger(__name__)
@@ -95,9 +99,9 @@ class DatabaseInterface:
 			await conn.execute(self.queries.add, guild, user, highlight)
 
 	async def _add_highlight_check(self, guild, user, highlight, *, connection):
-		if len(highlight) < 3:
+		if len(highlight) < MIN_HIGHLIGHT_LENGTH:
 			raise InvalidHighlightLength('Highlight word or phrase is too small.')
-		if len(highlight) > 50:
+		if len(highlight) > MAX_HIGHLIGHT_LENGTH:
 			raise InvalidHighlightLength('Highlight word or phrase is too long.')
 
 		count = await self.highlight_count(guild, user, connection=connection)
