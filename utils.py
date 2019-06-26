@@ -66,10 +66,24 @@ class Guild(commands.Converter):
 			return guild
 		raise commands.BadArgument('Server not found.')
 
-attrdict = type('attrdict', (dict,), {
-	'__getattr__': dict.__getitem__,
-	'__setattr__': dict.__setitem__,
-	'__delattr__': dict.__delitem__})
+# this does not extend dict so that public method names, such as "clear"
+# which may be desirable as keys, are not dispatched to the dict class
+class AttrDict:
+	def __init__(self, *args, **kwargs):
+		self.__dict__.update(dict(*args, **kwargs))
+
+	def __getitem__(self, key):
+		try:
+			return getattr(self, key)
+		except AttributeError:
+			raise KeyError(key)
+	def __setitem__(self, key, value):
+		setattr(self, key, value)
+	def __delitem__(self, key):
+		try:
+			delattr(self, key)
+		except AttributeError:
+			raise KeyError(key)
 
 # this function is Public Domain
 # https://creativecommons.org/publicdomain/zero/1.0/
@@ -79,7 +93,7 @@ def load_sql(fp):
 	the file-like is not closed afterwards.
 	"""
 	# tag -> list[lines]
-	queries = attrdict()
+	queries = AttrDict()
 	current_tag = ''
 
 	for line in fp:
@@ -87,9 +101,13 @@ def load_sql(fp):
 		if match:
 			current_tag = match[1]
 		if current_tag:
-			queries.setdefault(current_tag, []).append(line)
+			try:
+				queries[current_tag].append(line)
+			except KeyError:
+				queries[current_tag] = l = []
+				l.append(line)
 
-	for tag, query in queries.items():
+	for tag, query in queries.__dict__.items():
 		queries[tag] = ''.join(query)
 
 	return queries
