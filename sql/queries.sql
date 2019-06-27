@@ -62,7 +62,7 @@ WHERE guild = $1
 -- name: import_
 -- params: source_guild_id, target_guild_id, user_id
 INSERT INTO highlights (guild, "user", highlight)
-SELECT $2, "user", highlight
+SELECT FOR UPDATE $2, "user", highlight
 FROM highlights
 WHERE
 	guild = $1
@@ -71,7 +71,8 @@ ON CONFLICT DO NOTHING
 
 -- name: highlight_count
 -- params: guild_id, user_id
-SELECT COUNT(*)
+-- for update because checking the highlight count usually precedes updating it
+SELECT FOR UPDATE COUNT(*)
 FROM highlights
 WHERE
 	guild = $1
