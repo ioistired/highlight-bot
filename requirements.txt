@@ -2,4 +2,5 @@ asyncpg
 ben_cogs
 discord.py>=1.0.1,<2.0.0
 json5
+lacbd>=0.1.4,<1.0.0
 pygit2
