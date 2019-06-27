@@ -2,6 +2,7 @@
 
 import os
 import re
+import sys
 import unicodedata
 from functools import partial
 
@@ -38,3 +39,4 @@ else:
 	print(timeit('regex.findall(normalize("cafécafé café café"))', globals=globals()))
 
 print('After timing searching:', mem_usage())
+print('Searcher object size:', humanize.naturalsize(sys.getsizeof(searcher if use_lacbd else regex)))
