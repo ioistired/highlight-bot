@@ -137,9 +137,7 @@ class Highlight(commands.Cog):
 			if not searcher:
 				return
 
-			content = self.remove_mentions(self.message.content)
-
-			for highlight_users in searcher.search(content):
+			for highlight_users in searcher.search(self.message.content):
 				for highlight_user in highlight_users:
 					preferred_caps = highlight_user.preferred_caps
 					user = self.bot.get_user(highlight_user.id) or await self.bot.fetch_user(highlight_user.id)
@@ -165,9 +163,6 @@ class Highlight(commands.Cog):
 				return False
 			if await self.blocked(user):
 				return False
-			if user in self.message.mentions:
-				# pinging someone should not also highlight them
-				return False
 			if user in self.seen_users:
 				# this user has already been highlighted for this message
 				return False
@@ -179,14 +174,6 @@ class Highlight(commands.Cog):
 			"""return whether this user (the highlightee) has blocked the highlighter"""
 			# we only have to check if the *user* is blocked here bc the database filters out blocked channels
 			return self.db.blocked(user.id, self.author_id)
-
-		@staticmethod
-		def remove_mentions(content):
-			"""remove user @mentions from a message"""
-			return re.sub(r'<@!?\d+>', '', content, re.ASCII)
-			# don't remove role mentions because conceivably someone would want to be highlighted for a role they cannot join
-			# though it would be easier on the user to replace role mentions with @{role.name},
-			# @weeb should not highlight someone who has "weeb" set up as a mention
 
 	@classmethod
 	async def notify(cls, user, highlight, message):
