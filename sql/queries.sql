@@ -72,7 +72,7 @@ ON CONFLICT DO NOTHING
 -- name: highlight_count
 -- params: guild_id, user_id
 -- for update because checking the highlight count usually precedes updating it
-SELECT FOR UPDATE COUNT(*)
+SELECT COUNT(*)
 FROM highlights
 WHERE
 	guild = $1
