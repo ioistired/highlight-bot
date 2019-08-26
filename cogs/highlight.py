@@ -137,17 +137,19 @@ class Highlight(commands.Cog):
 			if not searcher:
 				return
 
-			content = self.remove_mentions(self.message.content)
-
-			for highlight_users in searcher.search(content):
+			content = self.message.content
+			for highlight_users, start, end in searcher.search_extended(content):
+				highlight = content[start:end+1]
 				for highlight_user in highlight_users:
 					preferred_caps = highlight_user.preferred_caps
 					user = self.bot.get_user(highlight_user.id) or await self.bot.fetch_user(highlight_user.id)
 
-					if await self.should_notify(user):
+					if await self.should_notify(user, highlight, preferred_caps):
 						yield user, preferred_caps
 
-		async def should_notify(self, user):
+		MENTION_RE = re.compile(r'<@!?\d+>', re.ASCII)
+
+		async def should_notify(self, user, highlight, preferred_caps):
 			"""assuming that a highlight was found in the message, return whether to notify the user"""
 			if (await self.bot.get_context(self.message)).valid:
 				# don't trigger on command invokes
@@ -165,8 +167,8 @@ class Highlight(commands.Cog):
 				return False
 			if await self.blocked(user):
 				return False
-			if user in self.message.mentions:
-				# pinging someone should not also highlight them
+			if not (self.MENTION_RE.match(preferred_caps) and self.MENTION_RE.match(highlight)):
+				print('mention did not match')
 				return False
 			if user in self.seen_users:
 				# this user has already been highlighted for this message
@@ -179,14 +181,6 @@ class Highlight(commands.Cog):
 			"""return whether this user (the highlightee) has blocked the highlighter"""
 			# we only have to check if the *user* is blocked here bc the database filters out blocked channels
 			return self.db.blocked(user.id, self.author_id)
-
-		@staticmethod
-		def remove_mentions(content):
-			"""remove user @mentions from a message"""
-			return re.sub(r'<@!?\d+>', '', content, re.ASCII)
-			# don't remove role mentions because conceivably someone would want to be highlighted for a role they cannot join
-			# though it would be easier on the user to replace role mentions with @{role.name},
-			# @weeb should not highlight someone who has "weeb" set up as a mention
 
 	@classmethod
 	async def notify(cls, user, highlight, message):
