@@ -168,7 +168,6 @@ class Highlight(commands.Cog):
 			if await self.blocked(user):
 				return False
 			if not (self.MENTION_RE.match(preferred_caps) and self.MENTION_RE.match(highlight)):
-				print('mention did not match')
 				return False
 			if user in self.seen_users:
 				# this user has already been highlighted for this message
