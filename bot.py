@@ -60,7 +60,7 @@ class HighlightBot(commands.AutoShardedBot):
 		self._fallback_prefix = str(uuid.uuid4())
 		super().__init__(
 			command_prefix=self.get_prefix_,
-			description='DMs you when certain words are said in chat.',
+			description='DMs you when one of your configured words or phrases are said in chat.',
 			help_command=HelpCommand())
 
 	def get_prefix_(self, bot, message):
