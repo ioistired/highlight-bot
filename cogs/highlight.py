@@ -48,6 +48,12 @@ def guild_only_command(*args, **kwargs):
 		return commands.guild_only()(commands.command(*args, **kwargs)(func))
 	return wrapper
 
+MENTION_RE = re.compile(r'<@!?(\d+)>', re.ASCII)
+NICKNAME_MENTION_RE = re.compile(MENTION_RE.pattern.replace('!?', '!'), MENTION_RE.flags)
+
+def normalize_mentions(s):
+	return NICKNAME_MENTION_RE.sub(r'<@\1>', s)
+
 class Highlight(commands.Cog):
 	def __init__(self, bot):
 		self.bot = bot
@@ -137,17 +143,15 @@ class Highlight(commands.Cog):
 			if not searcher:
 				return
 
-			content = self.message.content
+			content = normalize_mentions(self.message.content)
 			for highlight_users, start, end in searcher.search_extended(content):
-				highlight = content[start:end+1]
+				highlight = content[max(0, start - len('<@!')):end + len('>') + 1]
 				for highlight_user in highlight_users:
 					preferred_caps = highlight_user.preferred_caps
 					user = self.bot.get_user(highlight_user.id) or await self.bot.fetch_user(highlight_user.id)
 
 					if await self.should_notify(user, highlight, preferred_caps):
 						yield user, preferred_caps
-
-		MENTION_RE = re.compile(r'<@!?\d+>', re.ASCII)
 
 		async def should_notify(self, user, highlight, preferred_caps):
 			"""assuming that a highlight was found in the message, return whether to notify the user"""
@@ -165,9 +169,10 @@ class Highlight(commands.Cog):
 			if user == self.message.author:
 				# users may not highlight themselves
 				return False
-			if await self.blocked(user):
+			if bool(MENTION_RE.match(preferred_caps)) != bool(MENTION_RE.match(highlight)):
+				# only highlight @mentions if the user requested that
 				return False
-			if bool(self.MENTION_RE.match(preferred_caps)) != bool(self.MENTION_RE.match(highlight)):
+			if await self.blocked(user):
 				return False
 			if user in self.seen_users:
 				# this user has already been highlighted for this message
@@ -259,7 +264,7 @@ class Highlight(commands.Cog):
 		"""
 		await context.message.delete(delay=DELETE_AFTER)
 		try:
-			await self.db.add(context.guild.id, context.author.id, highlight)
+			await self.db.add(context.guild.id, context.author.id, normalize_mentions(highlight))
 		except commands.UserInputError:
 			await context.try_add_reaction(utils.SUCCESS_EMOJIS[False])
 			raise
