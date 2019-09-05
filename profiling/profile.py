@@ -12,7 +12,7 @@ import psutil
 
 from inspectable_timeit import timeit
 
-mem_usage = lambda _p=psutil.Process(): humanize.naturalsize(_p.memory_full_info().uss)
+def mem_usage(_p=psutil.Process()): return humanize.naturalsize(_p.memory_full_info().uss)
 
 print('Before timing anything:', mem_usage())
 
@@ -22,7 +22,7 @@ with open(os.environ['dict']) as f:
 	words = [normalize(word.rstrip()) for word in f]
 
 lacbd_code = 'lacbd.Searcher([(word, None) for word in words])'
-regex_code = 're.compile(r"(?s)(?i)\b(?:{})\b".format("|".join(map(re.escape, words))))'
+regex_code = 're.compile(r"(?si)\b(?:{})\b".format("|".join(map(re.escape, words))))'
 
 use_lacbd = os.environ.get('use_lacbd') == '1'
 print('Using', 'lacbd' if use_lacbd else 're')
