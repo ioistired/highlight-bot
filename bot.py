@@ -26,8 +26,9 @@ import uuid
 
 import asyncpg
 import discord
-from discord.ext import commands
 import json5
+import querypp
+from discord.ext import commands
 
 import utils
 
@@ -58,6 +59,7 @@ class HighlightBot(commands.AutoShardedBot):
 		self.config = config
 		self._process_config()
 		self._fallback_prefix = str(uuid.uuid4())
+		self.jinja_env = querypp.QueryEnvironment('sql')
 		super().__init__(
 			command_prefix=self.get_prefix_,
 			description='DMs you when one of your configured words or phrases are said in chat.',

@@ -52,8 +52,7 @@ class DatabaseInterface:
 	def __init__(self, bot):
 		self.bot = bot
 		self.pool = bot.pool
-		with open(os.path.join(BASE_DIR, 'sql', 'queries.sql')) as f:
-			self.queries = utils.load_sql(f)
+		self.queries = self.bot.jinja_env.get_template('queries.sql')
 		self.highlight_cache = utils.LRUDict(size=1_000)
 
 	### Queries
@@ -64,7 +63,7 @@ class DatabaseInterface:
 
 		highlight_users: DefaultDict[str, List[HighlightUser]] = defaultdict(list)
 		async for user_id, highlight in self.cursor(
-			self.queries.channel_highlights,
+			self.queries.channel_highlights(),
 			channel.guild.id, (channel.id, getattr(channel.category, 'id', None))
 		):
 			# we store both lowercase and original case
@@ -81,14 +80,14 @@ class DatabaseInterface:
 
 	async def user_highlights(self, guild, user):
 		# tfw no "fetchvals"
-		return [row['highlight'] for row in await self.pool.fetch(self.queries.user_highlights, guild, user)]
+		return [row['highlight'] for row in await self.pool.fetch(self.queries.user_highlights(), guild, user)]
 
 	async def blocks(self, user):
-		return set([row['entity'] for row in await self.pool.fetch(self.queries.blocks, user)])
+		return set([row['entity'] for row in await self.pool.fetch(self.queries.blocks(), user)])
 
 	async def blocked(self, user, entity):
 		"""Return whether user has blocked entity"""
-		return await self.pool.fetchval(self.queries.blocked, user, entity)
+		return await self.pool.fetchval(self.queries.blocked(), user, entity)
 
 	### Actions
 
@@ -96,7 +95,7 @@ class DatabaseInterface:
 		self._remove_from_cache(guild)
 		async with self.pool.acquire() as conn, conn.transaction():
 			await self._add_highlight_check(guild, user, highlight, connection=conn)
-			await conn.execute(self.queries.add, guild, user, highlight)
+			await conn.execute(self.queries.add(), guild, user, highlight)
 
 	async def _add_highlight_check(self, guild, user, highlight, *, connection):
 		if len(highlight) < MIN_HIGHLIGHT_LENGTH:
@@ -112,21 +111,21 @@ class DatabaseInterface:
 
 	async def remove(self, guild, user, highlight):
 		self._remove_from_cache(guild)
-		await self.pool.execute(self.queries.remove, guild, user, highlight)
+		await self.pool.execute(self.queries.remove(), guild, user, highlight)
 
 	async def clear(self, guild, user):
 		self._remove_from_cache(guild)
-		await self.pool.execute(self.queries.clear, guild, user)
+		await self.pool.execute(self.queries.clear(), guild, user)
 
 	async def clear_guild(self, guild):
 		self._remove_from_cache(guild)
-		await self.pool.execute(self.queries.clear_guild, guild)
+		await self.pool.execute(self.queries.clear_guild(), guild)
 
 	async def import_(self, source_guild, target_guild, user):
 		self._remove_from_cache(target_guild)
 		async with self.pool.acquire() as conn, conn.transaction():
 			await self._import_highlights_check(source_guild, target_guild, user, connection=conn)
-			await conn.execute(self.queries.import_, source_guild, target_guild, user)
+			await conn.execute(self.queries.import_(), source_guild, target_guild, user)
 
 	async def _import_highlights_check(self, source_guild, target_guild, user, *, connection):
 		source_guild_count = await self.highlight_count(source_guild, user, connection=connection)
@@ -145,15 +144,15 @@ class DatabaseInterface:
 			raise TooManyHighlights('Import would place you over the maximum number of highlight words.')
 
 	async def highlight_count(self, guild, user, *, connection=None):
-		return await (connection or self.pool).fetchval(self.queries.highlight_count, guild, user)
+		return await (connection or self.pool).fetchval(self.queries.highlight_count(), guild, user)
 
 	async def block(self, guild, user, entity: int):
 		self._remove_from_cache(guild, entity)
-		await self.pool.execute(self.queries.block, user, entity)
+		await self.pool.execute(self.queries.block(), user, entity)
 
 	async def unblock(self, guild, user, entity: int):
 		self._remove_from_cache(guild, entity)
-		await self.pool.execute(self.queries.unblock, user, entity)
+		await self.pool.execute(self.queries.unblock(), user, entity)
 
 	async def delete_account(self, user):
 		user = self.bot.get_user(user)
@@ -164,7 +163,7 @@ class DatabaseInterface:
 
 		async with self.pool.acquire() as conn, conn.transaction():
 			for table in 'highlights', 'blocks':
-				await conn.execute(self.queries.delete_by_user.format(table=table), user)
+				await conn.execute(self.queries.delete_by_user().format(table=table), user)
 
 	def _remove_from_cache(self, guild_id, channel_id=None):
 		if channel_id is not None:
