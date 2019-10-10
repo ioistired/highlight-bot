@@ -145,6 +145,7 @@ class Highlight(commands.Cog):
 
 			content = normalize_mentions(self.message.content)
 			for highlight_users, start, end in searcher.search_extended(content):
+				# peek around the matched string in order to distinguish textual numbers from @mentions
 				highlight = content[max(0, start - len('<@!')):end + len('>') + 1]
 				for highlight_user in highlight_users:
 					preferred_caps = highlight_user.preferred_caps
@@ -169,7 +170,8 @@ class Highlight(commands.Cog):
 			if user == self.message.author:
 				# users may not highlight themselves
 				return False
-			if bool(MENTION_RE.match(preferred_caps)) != bool(MENTION_RE.match(highlight)):
+			# search is used on the highlight string because it may contain the preferred_caps as a substring
+			if bool(MENTION_RE.search(preferred_caps)) != bool(MENTION_RE.search(highlight)):
 				# only highlight @mentions if the user requested that
 				return False
 			if await self.blocked(user):
