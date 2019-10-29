@@ -1,4 +1,4 @@
--- :query channel_highlights
+-- :macro channel_highlights()
 -- params: guild_id, (channel_id, channel_category_id)
 SELECT "user", highlight
 FROM highlights
@@ -10,64 +10,64 @@ WHERE
 		WHERE
 			highlights.user = blocks.user
 			AND entity = ANY ($2))
--- :endquery
+-- :endmacro
 
--- :query user_highlights
+-- :macro user_highlights()
 -- params: guild_id, user_id
 SELECT highlight
 FROM highlights
 WHERE
 	guild = $1
 	AND "user" = $2
--- :endquery
+-- :endmacro
 
--- :query blocks
+-- :macro blocks()
 -- params: user_id
 SELECT entity
 FROM blocks
 WHERE "user" = $1
--- :endquery
+-- :endmacro
 
--- :query blocked
+-- :macro blocked()
 -- params: user_id, entity_id
 SELECT true
 FROM blocks
 WHERE
 	"user" = $1
 	AND entity = $2
--- :endquery
+-- :endmacro
 
--- :query add
+-- :macro add()
 -- params: guild_id, user_id, highlight
 INSERT INTO highlights(guild, "user", highlight)
 VALUES ($1, $2, $3)
 ON CONFLICT DO NOTHING
--- :endquery
+-- :endmacro
 
--- :query remove
+-- :macro remove()
 -- params: guild_id, user_id, highlight
 DELETE FROM highlights
 WHERE
 	guild = $1
 	AND "user" = $2
 	AND LOWER(highlight) = LOWER($3)
--- :endquery
+-- :endmacro
 
--- :query clear
+-- :macro clear()
 -- params: guild_id, user_id
 DELETE FROM highlights
 WHERE
 	guild = $1
 	AND "user" = $2
--- :endquery
+-- :endmacro
 
--- :query clear_guild
+-- :macro clear_guild()
 -- params: guild_id
 DELETE FROM highlights
 WHERE guild = $1
--- :endquery
+-- :endmacro
 
--- :query import_
+-- :macro import_()
 -- params: source_guild_id, target_guild_id, user_id
 INSERT INTO highlights (guild, "user", highlight)
 SELECT FOR UPDATE $2, "user", highlight
@@ -76,35 +76,34 @@ WHERE
 	guild = $1
 	AND "user" = $3
 ON CONFLICT DO NOTHING
--- :endquery
+-- :endmacro
 
--- :query highlight_count
+-- :macro highlight_count()
 -- params: guild_id, user_id
--- for update because checking the highlight count usually precedes updating it
 SELECT COUNT(*)
 FROM highlights
 WHERE
 	guild = $1
 	AND "user" = $2
--- :endquery
+-- :endmacro
 
--- :query block
+-- :macro block()
 -- params: user_id, entity_id
 INSERT INTO blocks ("user", entity)
 VALUES ($1, $2)
 ON CONFLICT DO NOTHING
--- :endquery
+-- :endmacro
 
--- :query unblock
+-- :macro unblock()
 -- params: user_id, entity_id
 DELETE FROM blocks
 WHERE
 	"user" = $1
 	AND entity = $2
--- :endquery
+-- :endmacro
 
--- :query delete_by_user
+-- :macro delete_by_user(table)
 -- params: user_id
-DELETE FROM {table}
+DELETE FROM {{ table }}
 WHERE "user" = $1
--- :endquery
+-- :endmacro

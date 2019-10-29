@@ -16,7 +16,6 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import inspect
-import os.path
 import pkg_resources
 
 import discord
@@ -94,7 +93,7 @@ class Meta(commands.Cog):
 
 	@staticmethod
 	def _current_revision():
-		repo = pygit2.Repository(os.path.join(BASE_DIR, '.git'))
+		repo = pygit2.Repository(str(BASE_DIR / '.git'))
 		c = next(repo.walk(repo.head.target, pygit2.GIT_SORT_TOPOLOGICAL))
 		return c.hex[:10]
 

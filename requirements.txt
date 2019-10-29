@@ -1,8 +1,8 @@
 asyncpg
 bot_bin[sql]>=1.0.1,<2.0.0
 discord.py>=1.0.1,<2.0.0
+jinja2
 jishaku
 json5
 lacbd>=0.2.0,<1.0.0
 pygit2
-querypp>=0.1.1,<1.0.0

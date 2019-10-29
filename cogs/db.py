@@ -17,7 +17,6 @@
 
 from collections import defaultdict, namedtuple
 import logging
-import os.path
 from typing import DefaultDict, List, Optional, Tuple
 
 import discord
@@ -45,14 +44,11 @@ class InvalidHighlightLength(HighlightError):
 
 HighlightUser = namedtuple('HighlightUser', 'id preferred_caps')
 
-# it's here to resolve a circular import
-from bot import BASE_DIR
-
 class DatabaseInterface:
 	def __init__(self, bot):
 		self.bot = bot
 		self.pool = bot.pool
-		self.queries = self.bot.jinja_env.get_template('queries.sql')
+		self.queries = bot.queries('highlight.sql')
 		self.highlight_cache = utils.LRUDict(size=1_000)
 
 	### Queries
@@ -163,7 +159,7 @@ class DatabaseInterface:
 
 		async with self.pool.acquire() as conn, conn.transaction():
 			for table in 'highlights', 'blocks':
-				await conn.execute(self.queries.delete_by_user().format(table=table), user)
+				await conn.execute(self.queries.delete_by_user(table), user)
 
 	def _remove_from_cache(self, guild_id, channel_id=None):
 		if channel_id is not None:

@@ -18,18 +18,18 @@
 
 import contextlib
 import logging
-import os.path
+from pathlib import Path
 
 import discord
+import jinja2
 import json5
-import querypp
 from bot_bin.bot import Bot
 from discord.ext import commands
 
 import utils
 
 # has to go first to resolve import dependencies
-BASE_DIR = os.path.dirname(__file__)
+BASE_DIR = Path(__file__).parent
 
 from cogs.db import HighlightError
 
@@ -52,7 +52,9 @@ class HelpCommand(commands.MinimalHelpCommand):
 
 class HighlightBot(Bot):
 	def __init__(self, *, config):
-		self.jinja_env = querypp.QueryEnvironment('sql')
+		self.jinja_env = jinja2.Environment(
+			loader=jinja2.FileSystemLoader(str(BASE_DIR / 'sql')),
+			line_statement_prefix='-- :')
 		super().__init__(
 			description='DMs you when one of your configured words or phrases are said in chat.',
 			help_command=HelpCommand(),
@@ -68,6 +70,9 @@ class HighlightBot(Bot):
 	def get_context(self, message, *, cls=None):
 		return super().get_context(message, cls=cls or CustomContext)
 
+	def queries(self, template_name):
+		return self.jinja_env.get_template(template_name).module
+
 	startup_extensions = (
 		'cogs.highlight',
 		'cogs.meta',
@@ -79,7 +84,7 @@ class HighlightBot(Bot):
 	)
 
 if __name__ == '__main__':
-	with open(os.path.join(BASE_DIR, 'config.json5')) as f:
+	with open(BASE_DIR / 'config.json5') as f:
 		config = json5.load(f)
 
 	HighlightBot(config=config).run()
