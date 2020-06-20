@@ -159,7 +159,7 @@ class DatabaseInterface:
 
 		async with self.pool.acquire() as conn, conn.transaction():
 			for table in 'highlights', 'blocks':
-				await conn.execute(self.queries.delete_by_user(table), user)
+				await conn.execute(self.queries.delete_by_user.format(table=table), user.id)
 
 	def _remove_from_cache(self, guild_id, channel_id=None):
 		if channel_id is not None:
