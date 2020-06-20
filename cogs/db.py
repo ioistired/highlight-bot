@@ -150,16 +150,15 @@ class DatabaseInterface:
 		self._remove_from_cache(guild, entity)
 		await self.pool.execute(self.queries.unblock(), user, entity)
 
-	async def delete_account(self, user):
-		user = self.bot.get_user(user)
-		if user is not None:
+	async def delete_account(self, user_id):
+		if self.bot.get_user(user_id):
 			for guild in self.bot.guilds:
-				if guild.get_member(user.id):
+				if guild.get_member(user_id):
 					self._remove_from_cache(guild.id)
 
 		async with self.pool.acquire() as conn, conn.transaction():
 			for table in 'highlights', 'blocks':
-				await conn.execute(self.queries.delete_by_user.format(table=table), user.id)
+				await conn.execute(self.queries.delete_by_user(table), user_id)
 
 	def _remove_from_cache(self, guild_id, channel_id=None):
 		if channel_id is not None:
