@@ -261,7 +261,7 @@ class Highlight(commands.Cog):
 		a private message with the message that triggered it
 		along with context.
 
-		To prevent abuse of the service, you may only have up to 10
+		To prevent abuse of the service, you may only have up to 25
 		highlight word or phrases.
 		"""
 		await context.message.delete(delay=DELETE_AFTER)

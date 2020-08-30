@@ -30,7 +30,7 @@ import utils
 MIN_HIGHLIGHT_LENGTH = 2
 MAX_HIGHLIGHT_LENGTH = 200
 # max highlights per user
-LIMIT = 10
+LIMIT = 25
 logger = logging.getLogger(__name__)
 
 class HighlightError(commands.UserInputError):
