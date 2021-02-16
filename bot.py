@@ -41,6 +41,7 @@ class CustomContext(commands.Context):
 		with contextlib.suppress(discord.HTTPException):
 			await self.message.add_reaction(emoji)
 
+# show help for the main cog by default
 class HelpCommand(commands.MinimalHelpCommand):
 	async def send_bot_help(self, mapping):
 		cog = self.context.bot.get_cog('Highlight')
