@@ -11,7 +11,7 @@
 	support_server_invite_code: '',
 
 	ignore_bots: {
-		default: true,  // whether to generally ignore bots
+		default: false,  // whether to generally ignore bots
 
 		overrides: {
 			guilds: [],  // specific guilds for which the default should be inverted
