@@ -37,7 +37,7 @@ Entity = typing.Union[User, discord.TextChannel, discord.CategoryChannel]
 INACTIVITY_CUTOFF = 10
 # how many seconds to wait for new messages after a user has been highlighted
 NEW_MESSAGES_DELAY = 10
-# how many seconds to wait before command messages sent by the user and our replies to them
+# how many seconds to wait before command messages sent by the user and our replies to them are deleted
 DELETE_AFTER = 5
 # how many seconds to wait before deleting long messages, such as lists
 DELETE_LONG_AFTER = 15
@@ -149,9 +149,9 @@ class Highlight(commands.Cog):
 				highlight = content[max(0, start - len('<@!')):end + len('>') + 1]
 				for highlight_user in highlight_users:
 					preferred_caps = highlight_user.preferred_caps
-					user = self.bot.get_user(highlight_user.id) or await self.bot.fetch_user(highlight_user.id)
-
-					if await self.should_notify(user, highlight, preferred_caps):
+					guild = self.message.guild
+					user = guild.get_member(highlight_user.id) or await guild.fetch_member(highlight_user.id)
+					if user and await self.should_notify(user, highlight, preferred_caps):
 						yield user, preferred_caps
 
 		async def should_notify(self, user, highlight, preferred_caps):
@@ -163,9 +163,6 @@ class Highlight(commands.Cog):
 				return False
 			if self.message.author == self.bot.user:
 				# prevent someone adding "Your highlight words have been updated" as a highlight too
-				return False
-			if not self.message.guild.get_member(user.id):
-				# the user appears to have left the guild
 				return False
 			if user == self.message.author:
 				# users may not highlight themselves
