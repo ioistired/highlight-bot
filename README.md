@@ -12,9 +12,11 @@ postgres=# CREATE USER bots;
 postgres=# CREATE DATABASE highlight WITH OWNER bots;
 postgres=# ^D
 $ psql highlight -f sql/schema.sql
-$ python -m venv .venv
-$ source .venv/bin/activate
+$ python3 -m venv .venv
+$ . .venv/bin/activate
 $ pip install -Ur requirements.txt
+$ cp config.example.json5 config.json5
+$ # now edit config.json5 accordingly
 $ ./bot.py
 ```
 
@@ -26,11 +28,11 @@ run the new schema file against that database, then just `migra postgresql:///cm
 ## [License](LICENSE.md)
 
 Most of the documentation is used under the "use my strings idc" license.
-Copyright © 2019 Rapptz
+Copyright © Rapptz
 
 As for the bot code:
 
-Copyright © 2018 Benjamin Mintz <bmintz@protonmail.com>
+Copyright © lambda#0987
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU Affero General Public License as
