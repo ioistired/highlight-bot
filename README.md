@@ -12,7 +12,7 @@ postgres=# CREATE USER bots;
 postgres=# CREATE DATABASE highlight WITH OWNER bots;
 postgres=# ^D
 $ psql highlight -f sql/schema.sql
-$ python -m venv .venv
+$ python3 -m venv .venv
 $ source .venv/bin/activate
 $ pip install -Ur requirements.txt
 $ ./bot.py
