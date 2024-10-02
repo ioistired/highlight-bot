@@ -15,10 +15,10 @@
 
 from collections import defaultdict, namedtuple
 import logging
-from typing import DefaultDict, List, Optional, Tuple
+import re
+from typing import DefaultDict, List, Tuple
 
 import discord
-import lacbd
 from discord.ext import commands
 
 import utils
@@ -51,7 +51,7 @@ class DatabaseInterface:
 
 	### Queries
 
-	async def channel_highlights(self, channel) -> Optional[lacbd.Searcher]:
+	async def channel_highlights(self, channel):
 		if channel.id in self.highlight_cache.get(channel.guild.id, {}):
 			return self.highlight_cache[channel.guild.id][channel.id]
 
@@ -64,13 +64,23 @@ class DatabaseInterface:
 			# so that the original case can eventually be displayed to the user
 			highlight_users[highlight.lower()].append(HighlightUser(id=user_id, preferred_caps=highlight))
 
-		if not highlight_users:
-			searcher = None
-		else:
-			self.highlight_cache.setdefault(channel.guild.id, {})[channel.id] = searcher \
-				= lacbd.Searcher(highlight_users.items())
+		for other_highlight_users, regex in self.highlight_cache.get(channel.guild.id, {}).values():
+			if highlight_users == other_highlight_users:
+				self.highlight_cache.setdefault(channel.guild.id, {})[channel.id] = ret = (other_highlight_users, regex)
+				return ret
 
-		return searcher
+		self.highlight_cache.setdefault(channel.guild.id, {})[channel.id] = ret = (
+			highlight_users, self._build_re(set(highlight_users.keys())))
+		return ret
+
+	@staticmethod
+	def _build_re(highlights):
+		return re.compile((
+			r'(?i)'  # case insensitive
+			r'\b'  # word bound
+			r'(?:{})'  # non capturing group, to make sure that the word bound occurs before/after all words
+			r'\b'
+		).format('|'.join(map(re.escape, highlights))))
 
 	async def user_highlights(self, guild, user):
 		# tfw no "fetchvals"

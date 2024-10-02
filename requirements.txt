@@ -4,5 +4,4 @@ discord.py>=2.4.0,<3.0.0
 jinja2
 jishaku @ git+https://github.com/Gorialis/jishaku.git
 json5
-lacbd>=0.2.0,<1.0.0
 pygit2

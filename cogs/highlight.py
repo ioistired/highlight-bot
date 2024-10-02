@@ -153,15 +153,18 @@ class Highlight(commands.Cog):
 			self.seen_users = set()
 
 		async def __aiter__(self):
-			searcher = await self.db.channel_highlights(self.message.channel)
-			if not searcher:
+			highlight_users, regex = await self.db.channel_highlights(self.message.channel)
+			if not highlight_users:
 				return
 
 			content = normalize_mentions(self.message.content)
-			for highlight_users, start, end in searcher.search_extended(content):
+
+			for highlight_match in regex.finditer(content):
+				start, end = highlight_match.span()
 				# peek around the matched string in order to distinguish textual numbers from @mentions
 				highlight = content[max(0, start - len('<@!')):end + len('>') + 1]
-				for highlight_user in highlight_users:
+
+				for highlight_user in highlight_users.get(highlight_match[0].lower(), ()):
 					preferred_caps = highlight_user.preferred_caps
 					guild = self.message.guild
 					user = guild.get_member(highlight_user.id) or await guild.fetch_member(highlight_user.id)
