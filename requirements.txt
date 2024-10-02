@@ -1,8 +1,8 @@
 asyncpg
-bot_bin[sql]>=1.0.1,<2.0.0
-discord.py>=1.0.1,<2.0.0
+bot_bin[sql]>=2.0.3,<3.0.0
+discord.py>=2.4.0,<3.0.0
 jinja2
-jishaku
+jishaku @ git+https://github.com/Gorialis/jishaku.git
 json5
 lacbd>=0.2.0,<1.0.0
 pygit2

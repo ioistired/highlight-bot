@@ -16,6 +16,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import inspect
+import os.path
 import pkg_resources
 
 import discord
@@ -26,7 +27,7 @@ from bot import BASE_DIR
 import utils
 
 class Meta(commands.Cog):
-	@commands.command(aliases=['inv'])
+	@commands.hybrid_command(aliases=['inv'])
 	async def invite(self, context):
 		"""Gives you a link to add me to your server."""
 		# these are the same as the attributes of discord.Permissions
@@ -40,22 +41,21 @@ class Meta(commands.Cog):
 			'embed_links')
 		permissions = discord.Permissions()
 		permissions.update(**dict.fromkeys(permission_names, True))
-		await context.send('<%s>' % discord.utils.oauth_url(context.bot.user.id, permissions))
+		await context.send('<%s>' % discord.utils.oauth_url(context.bot.user.id, permissions=permissions))
 
-	@commands.command()
+	@commands.hybrid_command()
 	async def support(self, context):
 		"""Directs you to the support server."""
 		try:
 			await context.author.send('https://discord.gg/' + context.bot.config['support_server_invite_code'])
 		except discord.HTTPException:
-			await context.try_add_reaction(utils.SUCCESS_EMOJIS[False])
-			await context.send('Unable to send invite in DMs. Please allow DMs from server members.')
+			await context.send(f'{utils.SUCCESS_EMOJIS[False]} Unable to send invite in DMs. Please allow DMs from server members.', ephemeral=True)
 		else:
-			await context.try_add_reaction('📬')
+			await context.send('📬', ephemeral=True)
 
 	# heavily based on code provided by Rapptz, © 2015 Rapptz
 	# https://github.com/Rapptz/RoboDanny/blob/8919ec0a455f957848ef77b479fe3494e76f0aa7/cogs/meta.py#L162-L190
-	@commands.command()
+	@commands.hybrid_command()
 	async def source(self, context, *, command: str = None):
 		"""Displays my full source code or for a specific command."""
 		source_url = context.bot.config['repo']
@@ -83,7 +83,7 @@ class Meta(commands.Cog):
 				source_url = 'https://github.com/Gorialis/jishaku'
 				at = self._pkg_version('jishaku')
 			elif module.startswith('bot_bin'):
-				source_url = 'https://github.com/bmintz/bot-bin'
+				source_url = 'https://github.com/ioistired/bot-bin'
 				at = self._bot_bin_revision()
 
 			location = module.replace('.', '/') + '.py'
@@ -95,7 +95,7 @@ class Meta(commands.Cog):
 	def _current_revision():
 		repo = pygit2.Repository(str(BASE_DIR / '.git'))
 		c = next(repo.walk(repo.head.target, pygit2.GIT_SORT_TOPOLOGICAL))
-		return c.hex[:10]
+		return c.short_id
 
 	@classmethod
 	def _discord_revision(cls):
@@ -118,7 +118,7 @@ class Meta(commands.Cog):
 		except pkg_resources.DistributionNotFound:
 			return default
 
-def setup(bot):
-	bot.add_cog(Meta())
+async def setup(bot):
+	await bot.add_cog(Meta())
 	if not bot.config.get('support_server_invite_code'):
 		bot.remove_command('support')

@@ -404,5 +404,5 @@ class Highlight(commands.Cog):
 		else:
 			return True
 
-def setup(bot):
-	bot.add_cog(Highlight(bot))
+async def setup(bot):
+	await bot.add_cog(Highlight(bot))
