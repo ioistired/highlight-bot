@@ -194,10 +194,10 @@ class Highlight(commands.Cog):
 			self.seen_users.add(user)
 			return True
 
-		def blocked(self, user):
+		async def blocked(self, user):
 			"""return whether this user (the highlightee) has blocked the highlighter"""
 			# we only have to check if the *user* is blocked here bc the database filters out blocked channels
-			return self.db.blocked(user.id, self.author_id)
+			return await self.db.blocked(user.id, self.author_id)
 
 	@classmethod
 	async def notify(cls, user, highlight, message):
@@ -216,7 +216,7 @@ class Highlight(commands.Cog):
 		embed.color = discord.Color.blurple()
 		embed.title = highlight
 		embed.description = await cls.embed_description(message)
-		embed.set_author(name=message.author.name, icon_url=message.author.avatar_url_as(format='png', size=64))
+		embed.set_author(name=message.author.name, icon_url=message.author.avatar.replace(format='png', size=64))
 
 		# "Triggered today at 21:21"
 		embed.set_footer(text='Triggered')
@@ -357,11 +357,16 @@ class Highlight(commands.Cog):
 		"""Tells you if a given user has blocked you."""
 		if not context.interaction:
 			await context.message.delete(delay=DELETE_AFTER)
-		clean = functools.partial(commands.clean_content().convert, context)
-		if await self.db.blocked(user.id, context.author.id):
-			await context.send(await clean(f'Yes, {user.mention} has blocked you.'), delete_after=DELETE_AFTER, ephemeral=True)
+
+		if context.interaction:
+			clean_mention = user.mention
 		else:
-			await context.send(await clean(f'No, {user.mention} has not blocked you.'), delete_after=DELETE_AFTER, ephemeral=True)
+			clean_mention = '@' + user.name
+
+		if await self.db.blocked(user.id, context.author.id):
+			await context.send(f'Yes, {clean_mention} has blocked you.', delete_after=DELETE_AFTER, ephemeral=True)
+		else:
+			await context.send(f'No, {clean_mention} has not blocked you.', delete_after=DELETE_AFTER, ephemeral=True)
 
 	@guild_only_command()
 	async def clear(self, context):

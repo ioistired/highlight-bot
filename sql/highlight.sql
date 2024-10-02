@@ -9,7 +9,8 @@ WHERE
 		FROM blocks
 		WHERE
 			highlights.user = blocks.user
-			AND entity = ANY ($2))
+			AND entity = ANY ($2)
+	)
 -- :endmacro
 
 -- :macro user_highlights()

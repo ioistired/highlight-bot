@@ -35,11 +35,6 @@ from cogs.db import HighlightError
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('bot')
 
-class CustomContext(commands.Context):
-	async def try_add_reaction(self, emoji):
-		with contextlib.suppress(discord.HTTPException):
-			await self.message.add_reaction(emoji)
-
 # show help for the main cog by default
 class HelpCommand(commands.MinimalHelpCommand):
 	async def send_bot_help(self, mapping):
@@ -53,22 +48,24 @@ class HelpCommand(commands.MinimalHelpCommand):
 class HighlightBot(Bot):
 	def __init__(self, *, config):
 		self.jinja_env = jinja2.Environment(
-			loader=jinja2.FileSystemLoader(str(BASE_DIR / 'sql')),
-			line_statement_prefix='-- :')
+			loader=jinja2.FileSystemLoader(BASE_DIR / 'sql'),
+			line_statement_prefix='-- :',
+		)
+		intents = discord.Intents.default()
+		intents.message_content = True
 		super().__init__(
 			description='DMs you when one of your configured words or phrases are said in chat.',
 			help_command=HelpCommand(),
 			config=config,
-			setup_db=True)
+			intents=intents,
+			setup_db=True,
+		)
 
 	def process_config(self):
 		super().process_config()
 		success_emojis = self.config.get('success_or_failure_emojis')
 		if success_emojis:
 			utils.SUCCESS_EMOJIS = success_emojis
-
-	def get_context(self, message, *, cls=None):
-		return super().get_context(message, cls=cls or CustomContext)
 
 	def queries(self, template_name):
 		return self.jinja_env.get_template(template_name).module
