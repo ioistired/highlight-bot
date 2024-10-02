@@ -1,6 +1,4 @@
-# encoding: utf-8
-
-# Copyright © 2018 Benjamin Mintz <bmintz@protonmail.com>
+# Copyright © @lambda.dance
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as

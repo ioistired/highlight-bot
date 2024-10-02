@@ -1,7 +1,6 @@
-#!/usr/bin/env python3
-# encoding: utf-8
+#!/usr/bin/env python
 
-# Copyright © 2018 Benjamin Mintz <bmintz@protonmail.com>
+# Copyright © @lambda.dance
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as
