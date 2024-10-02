@@ -12,7 +12,7 @@ postgres=# CREATE USER bots;
 postgres=# CREATE DATABASE highlight WITH OWNER bots;
 postgres=# ^D
 $ psql highlight -f sql/schema.sql
-$ python3 -m venv .venv
+$ python -m venv .venv
 $ . .venv/bin/activate
 $ pip install -Ur requirements.txt
 $ cp config.example.json5 config.json5
@@ -23,7 +23,7 @@ $ ./bot.py
 Now copy config.example.json5 to config.json5 and modify it accordingly.
 
 To migrate the database, `pip install migra`, set up a database for staging,
-run the new schema file against that database, then just `migra postgresql:///cm postgresql:///cm_migrate | psql cm` for example.
+run the new schema file against that database, then just `migra postgresql:///highlight postgresql:///highlight_migrate | psql highlight` for example.
 
 ## [License](LICENSE.md)
 
