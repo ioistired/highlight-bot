@@ -32,7 +32,22 @@ from cogs.db import DatabaseInterface
 import utils
 
 User = typing.Union[discord.Member, discord.User]
-Entity = typing.Union[User, discord.TextChannel, discord.CategoryChannel]
+
+class BlockedEntityConverter(commands.Converter):
+	async def convert(self, ctx, arg):
+		for conv in (
+			commands.MemberConverter,
+			commands.UserConverter,
+			commands.TextChannelConverter,
+			commands.CategoryChannelConverter,
+		):
+			try:
+				return await conv().convert(ctx, arg)
+			except commands.BadArgument:
+				continue
+		else:
+			raise commands.BadArgument('Could not parse input as a user or channel')
+
 # how many seconds after a user is active in a channel before they are no longer considered active in that channel
 INACTIVITY_CUTOFF = 10
 # how many seconds to wait for new messages after a user has been highlighted
@@ -45,7 +60,7 @@ DELETE_LONG_AFTER = 15
 def guild_only_command(*args, **kwargs):
 	def wrapper(func):
 		# wooo, currying
-		return commands.guild_only()(commands.command(*args, **kwargs)(func))
+		return commands.guild_only()(commands.hybrid_command(*args, **kwargs)(func))
 	return wrapper
 
 MENTION_RE = re.compile(r'<@!?(\d+)>', re.ASCII)
@@ -129,7 +144,8 @@ class Highlight(commands.Cog):
 			'message': 'the message to process highlights for',
 			'author_id': 'ID of the user who sent the message',
 			'seen_users':
-				'users who have already been highlighted and should not be highlighted again for this message'}
+				'users who have already been highlighted and should not be highlighted again for this message',
+		}
 
 		def __init__(self, *, bot, message, db):
 			self.bot = bot
@@ -233,11 +249,12 @@ class Highlight(commands.Cog):
 	@guild_only_command(aliases=['show', 'ls'])
 	async def list(self, context):
 		"""Shows all your highlights words or phrases."""
-		await context.message.delete(delay=DELETE_AFTER)
+		if not context.interaction:
+			await context.message.delete(delay=DELETE_AFTER)
 
 		highlights = await self.db.user_highlights(context.guild.id, context.author.id)
 		if not highlights:
-			await context.send('You do not have any highlight words or phrases set up.', delete_after=DELETE_AFTER)
+			await context.send('You do not have any highlight words or phrases set up.', ephemeral=True, delete_after=DELETE_AFTER)
 			return
 
 		embed = self.author_embed(context.author)
@@ -245,7 +262,7 @@ class Highlight(commands.Cog):
 		embed.description = '\n'.join(highlights)
 		embed.set_footer(text=f'{len(highlights)} triggers')
 
-		await context.send(embed=embed, delete_after=DELETE_LONG_AFTER)
+		await context.send(embed=embed, ephemeral=True, delete_after=DELETE_LONG_AFTER)
 
 	@guild_only_command(usage='<word or phrase>')
 	async def add(self, context, *, highlight):
@@ -261,14 +278,15 @@ class Highlight(commands.Cog):
 		To prevent abuse of the service, you may only have up to 25
 		highlight word or phrases.
 		"""
-		await context.message.delete(delay=DELETE_AFTER)
+		if not context.interaction:
+			await context.message.delete(delay=DELETE_AFTER)
 		try:
 			await self.db.add(context.guild.id, context.author.id, normalize_mentions(highlight))
 		except commands.UserInputError:
-			await context.try_add_reaction(utils.SUCCESS_EMOJIS[False])
+			await context.send(utils.SUCCESS_EMOJIS[False], ephemeral=True, delete_after=DELETE_AFTER)
 			raise
 		else:
-			await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
+			await context.send(utils.SUCCESS_EMOJIS[True], ephemeral=True, delete_after=DELETE_AFTER)
 
 	@guild_only_command(usage='<word or phrase>', aliases=['delete', 'del', 'rm'])
 	async def remove(self, context, *, highlight):
@@ -277,14 +295,16 @@ class Highlight(commands.Cog):
 		Highlight words and phrases are not case-sensitive,
 		so coffee, Coffee, and COFFEE will all notify you.
 		"""
-		await context.message.delete(delay=DELETE_AFTER)
+		if not context.interaction:
+			await context.message.delete(delay=DELETE_AFTER)
 		await self.db.remove(context.guild.id, context.author.id, highlight)
-		await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
+		await context.send(utils.SUCCESS_EMOJIS[True], ephemeral=True, delete_after=DELETE_AFTER)
 
-	@commands.command(aliases=['blocks'])
+	@commands.hybrid_command(aliases=['blocks'])
 	async def blocked(self, context):
 		"""Shows you the users or channels that you have globally blocked."""
-		await context.message.delete(delay=DELETE_AFTER)
+		if not context.interaction:
+			await context.message.delete(delay=DELETE_AFTER)
 
 		embed = self.author_embed(context.author)
 		embed.title = 'Blocked'
@@ -292,7 +312,7 @@ class Highlight(commands.Cog):
 		embed.description='\n'.join(entities)
 		embed.set_footer(text=f'{len(entities)} entities blocked')
 
-		await context.send(embed=embed, delete_after=DELETE_LONG_AFTER)
+		await context.send(embed=embed, delete_after=DELETE_LONG_AFTER, ephemeral=True)
 
 	def format_entity(self, entity):
 		channel = self.bot.get_channel(entity)
@@ -309,45 +329,49 @@ class Highlight(commands.Cog):
 
 	@staticmethod
 	def author_embed(author):
-		return discord.Embed().set_author(name=str(author), icon_url=author.avatar_url_as(format='png', size=64))
+		return discord.Embed().set_author(name=str(author), icon_url=author.avatar.replace(format='png', size=64))
 
 	@guild_only_command()
-	async def block(self, context, *, entity: Entity):
+	async def block(self, context, *, entity: BlockedEntityConverter):
 		"""Blocks a member, channel, or channel category from highlighting you.
 
 		This is functionally equivalent to the Discord block feature,
 		which blocks them globally. This is not a per-server block.
 		"""
-		await context.message.delete(delay=DELETE_AFTER)
+		if not context.interaction:
+			await context.message.delete(delay=DELETE_AFTER)
 		await self.db.block(context.guild.id, context.author.id, entity.id)
-		await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
+		await context.send(utils.SUCCESS_EMOJIS[True], ephemeral=True, delete_after=DELETE_AFTER)
 
 	@guild_only_command()
-	async def unblock(self, context, *, entity: Entity):
+	async def unblock(self, context, *, entity: BlockedEntityConverter):
 		"""Unblocks a member or channel from mentioning you.
 
 		This reverts a previous block action.
 		"""
-		await context.message.delete(delay=DELETE_AFTER)
+		if not context.interaction:
+			await context.message.delete(delay=DELETE_AFTER)
 		await self.db.unblock(context.guild.id, context.author.id, entity.id)
-		await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
+		await context.send(utils.SUCCESS_EMOJIS[True], ephemeral=True, delete_after=DELETE_AFTER)
 
-	@commands.command(name='blocked-by', aliases=['blocked-by?', 'blocked?'])
+	@commands.hybrid_command(name='blocked-by', aliases=['blocked-by?', 'blocked?'])
 	async def blocked_by(self, context, *, user: User):
 		"""Tells you if a given user has blocked you."""
-		await context.message.delete(delay=DELETE_AFTER)
+		if not context.interaction:
+			await context.message.delete(delay=DELETE_AFTER)
 		clean = functools.partial(commands.clean_content().convert, context)
 		if await self.db.blocked(user.id, context.author.id):
-			await context.send(await clean(f'Yes, {user.mention} has blocked you.'), delete_after=DELETE_AFTER)
+			await context.send(await clean(f'Yes, {user.mention} has blocked you.'), delete_after=DELETE_AFTER, ephemeral=True)
 		else:
-			await context.send(await clean(f'No, {user.mention} has not blocked you.'), delete_after=DELETE_AFTER)
+			await context.send(await clean(f'No, {user.mention} has not blocked you.'), delete_after=DELETE_AFTER, ephemeral=True)
 
 	@guild_only_command()
 	async def clear(self, context):
 		"""Removes all your highlight words or phrases."""
-		await context.message.delete(delay=DELETE_AFTER)
+		if not context.interaction:
+			await context.message.delete(delay=DELETE_AFTER)
 		await self.db.clear(context.guild.id, context.author.id)
-		await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
+		await context.send(utils.SUCCESS_EMOJIS[True], ephemeral=True)
 
 	@guild_only_command(name='import')
 	async def import_(self, context, *, server: utils.Guild):
@@ -359,17 +383,18 @@ class Highlight(commands.Cog):
 
 		You can provide the server either by ID or by name. Names are case-sensitive.
 		"""
-		await context.message.delete(delay=DELETE_AFTER)
+		if not context.interaction:
+			await context.message.delete(delay=DELETE_AFTER)
 		try:
 			await self.db.import_(source_guild=server.id, target_guild=context.guild.id, user=context.author.id)
 		except commands.UserInputError:
-			await context.try_add_reaction(utils.SUCCESS_EMOJIS[False])
+			await context.send(utils.SUCCESS_EMOJIS[False], ephemeral=True)
 			raise
 		else:
-			await context.try_add_reaction(utils.SUCCESS_EMOJIS[True])
+			await context.send(utils.SUCCESS_EMOJIS[True], ephemeral=True)
 
-	@commands.command(name='delete-my-account')
-	async def delete_my_account(self, context):
+	@commands.hybrid_command(name='delete-my-account')
+	async def delete_my_account(self, context, confirm = None):
 		"""Deletes all information I have on you.
 
 		This will delete:
@@ -377,16 +402,21 @@ class Highlight(commands.Cog):
 			• All your blocks
 		"""
 
-		confirmation_phrase = 'Yes, delete my account.'
-		prompt = (
-			 'Are you sure you want to delete your account? '
-			f'To confirm, please say “{confirmation_phrase}” exactly.')
-
-		if not await self.confirm(context, prompt, confirmation_phrase):
+		if confirm != 'confirm':
+			await context.send(
+				'Are you sure you want to delete your account? '
+				'To confirm, run /delete-my-account confirm.',
+				ephemeral=True,
+				delete_after=DELETE_LONG_AFTER,
+			)
 			return
 
 		await self.db.delete_account(context.author.id)
-		await context.send(f"{context.author.mention} I've deleted your account successfully.")
+		await context.send(
+			f"{context.author.mention} I've deleted your account successfully.",
+			ephemeral=True,
+			delete_after=DELETE_LONG_AFTER,
+		)
 
 	async def confirm(self, context, prompt, required_phrase, *, timeout=30):
 		await context.send(prompt)
