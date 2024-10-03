@@ -329,7 +329,7 @@ class Highlight(commands.Cog):
 			return f'🗨️  <#{entity_id}>'
 
 		if type is S.user:
-			return f'👤 <@entity_id>'
+			return f'👤 <@{entity_id}>'
 
 		return f'❔ {entity_id}'
 
