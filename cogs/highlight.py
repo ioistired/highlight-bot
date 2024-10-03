@@ -25,6 +25,7 @@ import typing
 
 import discord
 from discord.ext import commands
+from discord import app_commands
 
 from cogs.db import DatabaseInterface
 import utils
@@ -74,6 +75,20 @@ class Highlight(commands.Cog):
 		self.bot = bot
 		self.db = DatabaseInterface(self.bot)
 		self.recently_active = utils.LRUDict(size=1_000)
+		self.setup_ctx_menu()
+
+	async def cog_unload(self):
+		self.teardown_ctx_menu()
+
+	def setup_ctx_menu(self):
+		self.ctx_menu = app_commands.ContextMenu(
+			name='Toggle block',
+			callback=self.toggle_block,
+		)
+		self.bot.tree.add_command(self.ctx_menu)
+
+	def teardown_ctx_menu(self):
+		self.bot.tree.remove_command(self.ctx_menu.name, type=self.ctx_menu.type)
 
 	### Events
 
@@ -356,6 +371,14 @@ class Highlight(commands.Cog):
 		)
 		await self.db.block(context.guild.id, context.author.id, entity.id, entity_type)
 		await context.send(utils.SUCCESS_EMOJIS[True], ephemeral=True, delete_after=DELETE_AFTER)
+
+	async def toggle_block(self, interaction: discord.Interaction, user: discord.Member):
+		if await self.db.blocked(interaction.user.id, user.id):
+			await self.db.unblock(interaction.guild_id, interaction.user.id, user.id)
+			await interaction.response.send_message(f'{user.name} is no longer blocked.', ephemeral=True)
+		else:
+			await self.db.block(interaction.guild_id, interaction.user.id, user.id, S.user)
+			await interaction.response.send_message(f'{user.name} is now blocked.', ephemeral=True)
 
 	@guild_only_command()
 	async def unblock(self, context, *, entity: BlockedEntityConverter):
