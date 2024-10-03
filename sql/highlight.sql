@@ -71,11 +71,12 @@ WHERE guild = $1
 -- :macro import_()
 -- params: source_guild_id, target_guild_id, user_id
 INSERT INTO highlights (guild, "user", highlight)
-SELECT FOR UPDATE $2, "user", highlight
+SELECT $2, "user", highlight
 FROM highlights
 WHERE
 	guild = $1
 	AND "user" = $3
+FOR UPDATE
 ON CONFLICT DO NOTHING
 -- :endmacro
 
