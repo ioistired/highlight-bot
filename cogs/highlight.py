@@ -28,6 +28,7 @@ from discord.ext import commands
 
 from cogs.db import DatabaseInterface
 import utils
+from utils import Symbol as S
 
 User = typing.Union[discord.Member, discord.User]
 
@@ -37,6 +38,7 @@ class BlockedEntityConverter(commands.Converter):
 			commands.MemberConverter,
 			commands.UserConverter,
 			commands.TextChannelConverter,
+			commands.ThreadConverter,
 			commands.CategoryChannelConverter,
 		):
 			try:
@@ -109,7 +111,8 @@ class Highlight(commands.Cog):
 				check=lambda channel_id, user_id:
 					channel_id == message.channel.id
 					and user_id == highlighted_user.id,
-				timeout=NEW_MESSAGES_DELAY)
+				timeout=NEW_MESSAGES_DELAY,
+			)
 		except asyncio.TimeoutError:
 			# no activity received in time
 			await self.notify(highlighted_user, highlight, message)
@@ -316,17 +319,19 @@ class Highlight(commands.Cog):
 		await context.send(embed=embed, delete_after=DELETE_LONG_AFTER, ephemeral=True)
 
 	def format_entity(self, entity):
-		channel = self.bot.get_channel(entity)
-		if channel:
+		entity_id, type = entity
+		if type is S.channel:
+			channel = self.bot.get_channel(entity_id)
 			if isinstance(channel, discord.CategoryChannel):
 				return f'📂 {channel.name}'
-			return f'🗨️  {channel.mention}'
+			if isinstance(channel, discord.Thread):
+				return f'🧵 {channel.jump_url}'
+			return f'🗨️  <#{entity_id}>'
 
-		user = self.bot.get_user(entity)
-		if user:
-			return f'👤 {user.mention}'
+		if type is S.user:
+			return f'👤 <@entity_id>'
 
-		return f'❔ {entity}'
+		return f'❔ {entity_id}'
 
 	@staticmethod
 	def author_embed(author):
@@ -341,7 +346,15 @@ class Highlight(commands.Cog):
 		"""
 		if not context.interaction:
 			await context.message.delete(delay=DELETE_AFTER)
-		await self.db.block(context.guild.id, context.author.id, entity.id)
+		entity_type = (
+			S.channel if isinstance(entity, (
+				discord.Thread,
+				discord.CategoryChannel,
+				discord.TextChannel,
+			))
+			else S.user
+		)
+		await self.db.block(context.guild.id, context.author.id, entity.id, entity_type)
 		await context.send(utils.SUCCESS_EMOJIS[True], ephemeral=True, delete_after=DELETE_AFTER)
 
 	@guild_only_command()

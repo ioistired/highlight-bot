@@ -24,7 +24,7 @@ WHERE
 
 -- :macro blocks()
 -- params: user_id
-SELECT entity
+SELECT entity, "type"
 FROM blocks
 WHERE "user" = $1
 -- :endmacro
@@ -90,8 +90,8 @@ WHERE
 
 -- :macro block()
 -- params: user_id, entity_id
-INSERT INTO blocks ("user", entity)
-VALUES ($1, $2)
+INSERT INTO blocks ("user", entity, "type")
+VALUES ($1, $2, $3)
 ON CONFLICT DO NOTHING
 -- :endmacro
 

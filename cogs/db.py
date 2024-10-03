@@ -22,6 +22,7 @@ import discord
 from discord.ext import commands
 
 import utils
+from utils import Symbol as S
 
 # minimum length in characters of a highlight keyword
 # TODO count grapheme clusters instead?
@@ -87,7 +88,7 @@ class DatabaseInterface:
 		return [row['highlight'] for row in await self.pool.fetch(self.queries.user_highlights(), guild, user)]
 
 	async def blocks(self, user):
-		return set([row['entity'] for row in await self.pool.fetch(self.queries.blocks(), user)])
+		return {(row['entity'], S(row['type'])) for row in await self.pool.fetch(self.queries.blocks(), user)}
 
 	async def blocked(self, user, entity):
 		"""Return whether user has blocked entity"""
@@ -143,20 +144,21 @@ class DatabaseInterface:
 				source_guild,
 				target_guild,
 				user,
-				LIMIT)
+				LIMIT,
+			)
 		if total >= LIMIT:
 			raise TooManyHighlights('Import would place you over the maximum number of highlight words.')
 
 	async def highlight_count(self, guild, user, *, connection=None):
 		return await (connection or self.pool).fetchval(self.queries.highlight_count(), guild, user)
 
-	async def block(self, guild, user, entity: int):
-		self._remove_from_cache(guild, entity)
-		await self.pool.execute(self.queries.block(), user, entity)
+	async def block(self, guild, user, entity_id: int, entity_type: S):
+		self._remove_from_cache(guild, entity_id)
+		await self.pool.execute(self.queries.block(), user, entity_id, entity_type.name)
 
-	async def unblock(self, guild, user, entity: int):
-		self._remove_from_cache(guild, entity)
-		await self.pool.execute(self.queries.unblock(), user, entity)
+	async def unblock(self, guild, user, entity_id: int):
+		self._remove_from_cache(guild, entity_id)
+		await self.pool.execute(self.queries.unblock(), user, entity_id)
 
 	async def delete_account(self, user_id):
 		if self.bot.get_user(user_id):

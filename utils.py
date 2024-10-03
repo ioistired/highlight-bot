@@ -106,3 +106,37 @@ def load_sql(fp):
 		queries[tag] = ''.join(query)
 
 	return queries
+
+class _SymbolMeta(type):
+	def __getattr__(cls, key):
+		return cls(key)
+
+class Symbol(metaclass=_SymbolMeta):
+	"""Brings LISP style symbols to Python.
+
+	Symbol.x is an interned object. You can use it as a replacement for sys.intern('x') or object() in argument
+	defaults. Symbol('x') also works.
+	"""
+
+	__slots__ = 'name',
+
+	_cache = {}
+
+	def __new__(cls, name: str):
+		try:
+			return cls._cache[name]
+		except KeyError:
+			self = cls._cache[name] = super().__new__(cls)
+			self.name = name
+			return self
+
+	def __hash__(self):
+		return id(self)
+
+	def __repr__(self):
+		name = self.name
+		cls_name = type(self).__qualname__
+		if name.isidentifier():
+			return f'{cls_name}.{name}'
+		else:
+			return f'{cls_name}({name!r})'
