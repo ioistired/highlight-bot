@@ -77,6 +77,7 @@ class HighlightBot(Bot):
 		'bot_bin.debug',
 		'bot_bin.stats',
 		'bot_bin.sql',
+		'bot_bin.systemd',
 		'jishaku',
 	)
 
