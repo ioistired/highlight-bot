@@ -113,7 +113,9 @@ class Highlight(commands.Cog):
 				coros.append(self.notify_if_user_is_inactive(highlighted_user, highlight, message))
 
 		# notify everyone asynchronously
-		await asyncio.gather(*coros)
+		async with asyncio.TaskGroup() as tg:
+			for coro in coros:
+				tg.create_task(coro)
 
 	@commands.Cog.listener()
 	async def on_user_activity(self, channel_id, user_id):
