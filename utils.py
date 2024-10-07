@@ -22,6 +22,21 @@ from discord.ext import commands
 
 SUCCESS_EMOJIS = {False: '❌', True: '✅'}
 
+async def delete_or_ephemeral(ctx, /, content=None, **kwargs):
+	"""
+	a replacement for Context.send which either:
+	- deletes the message after the specified delay, OR
+	- sends the message as ephemeral
+
+	depending on if this is an interaction or a normal ext.commands invocation.
+	only delete_after needs to be passed, as ephemeral is implied.
+	"""
+	if ctx.interaction:
+		kwargs.pop('delete_after', None)
+		await ctx.send(content, **kwargs, ephemeral=True)
+	else:
+		await ctx.send(content, **kwargs)
+
 class LRUDict(collections.OrderedDict):
 	"""a dictionary with fixed size, sorted by last use"""
 

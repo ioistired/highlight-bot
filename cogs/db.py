@@ -71,7 +71,9 @@ class DatabaseInterface:
 				return ret
 
 		self.highlight_cache.setdefault(channel.guild.id, {})[channel.id] = ret = (
-			highlight_users, self._build_re(set(highlight_users.keys())))
+			highlight_users,
+			self._build_re(set(highlight_users.keys())),
+		)
 		return ret
 
 	@staticmethod

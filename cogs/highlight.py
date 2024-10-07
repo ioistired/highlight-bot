@@ -29,7 +29,7 @@ from discord import app_commands
 
 from cogs.db import DatabaseInterface
 import utils
-from utils import Symbol as S
+from utils import Symbol as S, delete_or_ephemeral
 
 User = typing.Union[discord.Member, discord.User]
 
@@ -275,7 +275,7 @@ class Highlight(commands.Cog):
 
 		highlights = await self.db.user_highlights(context.guild.id, context.author.id)
 		if not highlights:
-			await context.send('You do not have any highlight words or phrases set up.', ephemeral=True, delete_after=DELETE_AFTER)
+			await delete_or_ephemeral(context, 'You do not have any highlight words or phrases set up.', delete_after=DELETE_AFTER)
 			return
 
 		embed = self.author_embed(context.author)
@@ -283,7 +283,7 @@ class Highlight(commands.Cog):
 		embed.description = '\n'.join(highlights)
 		embed.set_footer(text=f'{len(highlights)} triggers')
 
-		await context.send(embed=embed, ephemeral=True, delete_after=DELETE_LONG_AFTER)
+		await delete_or_ephemeral(context, embed=embed, delete_after=DELETE_LONG_AFTER)
 
 	@guild_only_command(usage='<word or phrase>')
 	async def add(self, context, *, highlight):
@@ -304,10 +304,10 @@ class Highlight(commands.Cog):
 		try:
 			await self.db.add(context.guild.id, context.author.id, normalize_mentions(highlight))
 		except commands.UserInputError:
-			await context.send(utils.SUCCESS_EMOJIS[False], ephemeral=True, delete_after=DELETE_AFTER)
+			await delete_or_ephemeral(context, utils.SUCCESS_EMOJIS[False], delete_after=DELETE_AFTER)
 			raise
 		else:
-			await context.send(utils.SUCCESS_EMOJIS[True], ephemeral=True, delete_after=DELETE_AFTER)
+			await delete_or_ephemeral(context, utils.SUCCESS_EMOJIS[True], delete_after=DELETE_AFTER)
 
 	@guild_only_command(usage='<word or phrase>', aliases=['delete', 'del', 'rm'])
 	async def remove(self, context, *, highlight):
@@ -319,7 +319,7 @@ class Highlight(commands.Cog):
 		if not context.interaction:
 			await context.message.delete(delay=DELETE_AFTER)
 		await self.db.remove(context.guild.id, context.author.id, highlight)
-		await context.send(utils.SUCCESS_EMOJIS[True], ephemeral=True, delete_after=DELETE_AFTER)
+		await delete_or_ephemeral(context, utils.SUCCESS_EMOJIS[True], delete_after=DELETE_AFTER)
 
 	@commands.hybrid_command(aliases=['blocks'])
 	async def blocked(self, context):
@@ -333,7 +333,7 @@ class Highlight(commands.Cog):
 		embed.description='\n'.join(entities)
 		embed.set_footer(text=f'{len(entities)} entities blocked')
 
-		await context.send(embed=embed, delete_after=DELETE_LONG_AFTER, ephemeral=True)
+		await delete_or_ephemeral(context, embed=embed, delete_after=DELETE_LONG_AFTER)
 
 	def format_entity(self, entity):
 		entity_id, type = entity
@@ -372,7 +372,7 @@ class Highlight(commands.Cog):
 			else S.user
 		)
 		await self.db.block(context.guild.id, context.author.id, entity.id, entity_type)
-		await context.send(utils.SUCCESS_EMOJIS[True], ephemeral=True, delete_after=DELETE_AFTER)
+		await delete_or_ephemeral(context, utils.SUCCESS_EMOJIS[True], delete_after=DELETE_AFTER)
 
 	async def toggle_block(self, interaction: discord.Interaction, user: discord.Member):
 		if await self.db.blocked(interaction.user.id, user.id):
@@ -391,7 +391,7 @@ class Highlight(commands.Cog):
 		if not context.interaction:
 			await context.message.delete(delay=DELETE_AFTER)
 		await self.db.unblock(context.guild.id, context.author.id, entity.id)
-		await context.send(utils.SUCCESS_EMOJIS[True], ephemeral=True, delete_after=DELETE_AFTER)
+		await delete_or_ephemeral(context, utils.SUCCESS_EMOJIS[True], delete_after=DELETE_AFTER)
 
 	@commands.hybrid_command(name='blocked-by', aliases=['blocked-by?', 'blocked?'])
 	async def blocked_by(self, context, *, user: User):
@@ -405,9 +405,9 @@ class Highlight(commands.Cog):
 			clean_mention = '@' + user.name
 
 		if await self.db.blocked(user.id, context.author.id):
-			await context.send(f'Yes, {clean_mention} has blocked you.', delete_after=DELETE_AFTER, ephemeral=True)
+			await delete_or_ephemeral(context, f'Yes, {clean_mention} has blocked you.', delete_after=DELETE_AFTER)
 		else:
-			await context.send(f'No, {clean_mention} has not blocked you.', delete_after=DELETE_AFTER, ephemeral=True)
+			await delete_or_ephemeral(context, f'No, {clean_mention} has not blocked you.', delete_after=DELETE_AFTER)
 
 	@guild_only_command()
 	async def clear(self, context):
@@ -415,7 +415,7 @@ class Highlight(commands.Cog):
 		if not context.interaction:
 			await context.message.delete(delay=DELETE_AFTER)
 		await self.db.clear(context.guild.id, context.author.id)
-		await context.send(utils.SUCCESS_EMOJIS[True], ephemeral=True)
+		await delete_or_ephemeral(context, utils.SUCCESS_EMOJIS[True], delete_after=DELETE_AFTER)
 
 	@guild_only_command(name='import')
 	async def import_(self, context, *, server: utils.Guild):
@@ -432,10 +432,10 @@ class Highlight(commands.Cog):
 		try:
 			await self.db.import_(source_guild=server.id, target_guild=context.guild.id, user=context.author.id)
 		except commands.UserInputError:
-			await context.send(utils.SUCCESS_EMOJIS[False], ephemeral=True)
+			await delete_or_ephemeral(context, utils.SUCCESS_EMOJIS[False], delete_after=DELETE_AFTER)
 			raise
 		else:
-			await context.send(utils.SUCCESS_EMOJIS[True], ephemeral=True)
+			await delete_or_ephemeral(utils.SUCCESS_EMOJIS[True], delete_after=DELETE_AFTER)
 
 	@commands.hybrid_command(name='delete-my-account')
 	async def delete_my_account(self, context, confirm = None):
@@ -447,18 +447,18 @@ class Highlight(commands.Cog):
 		"""
 
 		if confirm != 'confirm':
-			await context.send(
+			await delete_or_ephemeral(
+				context,
 				'Are you sure you want to delete your account? '
 				'To confirm, run /delete-my-account confirm.',
-				ephemeral=True,
 				delete_after=DELETE_LONG_AFTER,
 			)
 			return
 
 		await self.db.delete_account(context.author.id)
-		await context.send(
+		await delete_or_ephemeral(
+			context,
 			f"{context.author.mention} I've deleted your account successfully.",
-			ephemeral=True,
 			delete_after=DELETE_LONG_AFTER,
 		)
 
